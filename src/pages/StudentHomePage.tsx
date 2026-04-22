@@ -1,19 +1,74 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { MapView } from '@/components/student/MapView'
 import { getStudentSession } from '@/lib/auth'
-import { mockRewards, mockSessions, mockStudents } from '@/lib/mockData'
+import { mockStudents } from '@/lib/mockData'
+import { fetchStudentRewards, getStickerCountFromRewards } from '@/lib/studentData'
+import { fetchStudentProgressSnapshot } from '@/lib/progressionApi'
+import { getProgressSnapshotFromStickers, TOTAL_STEPS } from '@/lib/progression'
+import type { ProgressSnapshotRow, Reward } from '@/lib/types'
 
 export function StudentHomePage() {
   const [activeLevel, setActiveLevel] = useState(1)
+  const [rewards, setRewards] = useState<Reward[]>([])
+  const [snapshot, setSnapshot] = useState<ProgressSnapshotRow | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showCelebration, setShowCelebration] = useState(false)
   const studentSession = getStudentSession()
-  const student =
-    mockStudents.find((entry) => entry.id === studentSession?.studentId) ?? mockStudents[0]
+  const activeStudentId = studentSession?.studentId ?? mockStudents[0].id
+  const displayStudent = mockStudents.find((entry) => entry.id === activeStudentId) ?? null
+  const displayName = displayStudent?.username ?? 'Student'
+  const previousStickerCountRef = useRef(0)
 
-  const completedCount = useMemo(() => {
-    const sessions = mockSessions.filter((session) => session.student_id === student.id).length
-    const rewards = mockRewards.filter((reward) => reward.student_id === student.id).length
-    return Math.min(6, Math.floor((sessions + rewards) / 2))
-  }, [student.id])
+  useEffect(() => {
+    let active = true
+    const loadRewards = async () => {
+      setIsLoading(true)
+      setError('')
+      try {
+        const [rows, progressSnapshot] = await Promise.all([
+          fetchStudentRewards(activeStudentId, studentSession?.shareToken ?? null),
+          fetchStudentProgressSnapshot(activeStudentId, studentSession?.shareToken ?? null),
+        ])
+        if (!active) return
+        const stickerCount = getStickerCountFromRewards(rows)
+        if (stickerCount > previousStickerCountRef.current && previousStickerCountRef.current > 0) {
+          setShowCelebration(true)
+          window.setTimeout(() => setShowCelebration(false), 1200)
+        }
+        previousStickerCountRef.current = stickerCount
+        setRewards(rows)
+        setSnapshot(progressSnapshot)
+      } catch {
+        if (!active) return
+        setError('Unable to load reward progress right now.')
+      } finally {
+        if (active) setIsLoading(false)
+      }
+    }
+
+    void loadRewards()
+    return () => {
+      active = false
+    }
+  }, [activeStudentId, studentSession?.shareToken])
+
+  const progress = useMemo(() => {
+    if (snapshot) {
+      return getProgressSnapshotFromStickers(snapshot.total_steps)
+    }
+    const stickerCount = getStickerCountFromRewards(rewards)
+    return getProgressSnapshotFromStickers(stickerCount)
+  }, [rewards, snapshot])
+
+  useEffect(() => {
+    if (activeLevel > progress.unlockedWorldId) {
+      setActiveLevel(progress.unlockedWorldId)
+    }
+  }, [activeLevel, progress.unlockedWorldId])
+
+  const currentWorldProgress = progress.worldProgress.find((world) => world.worldId === activeLevel)
 
   return (
     <div className="space-y-5">
@@ -22,14 +77,59 @@ export function StudentHomePage() {
           🎵
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-textPrimary">Hi {student.username}!</h1>
+          <h1 className="text-2xl font-semibold text-textPrimary">Hi {displayName}!</h1>
           <p className="text-sm text-textSecondary">
-            You&apos;re on level {activeLevel}. Keep Climbing!
+            You&apos;re on level {progress.currentWorldId}. Keep climbing to checkpoint{' '}
+            {Math.min(
+              currentWorldProgress?.totalSteps ?? 1,
+              progress.currentStep - ((currentWorldProgress?.startStep ?? 1) - 1),
+            )}
+            !
           </p>
         </div>
       </section>
 
-      <MapView level={activeLevel} onLevelChange={setActiveLevel} completedCount={completedCount} />
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-textMuted">Completed Steps</p>
+          <p className="text-2xl font-semibold text-textPrimary">
+            {progress.completedSteps}/{TOTAL_STEPS}
+          </p>
+        </article>
+        <article className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-textMuted">Coins</p>
+          <p className="text-2xl font-semibold text-textPrimary">{progress.totalCoins}</p>
+        </article>
+        <article className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-textMuted">Milestone Badges</p>
+          <p className="text-2xl font-semibold text-textPrimary">{progress.milestoneBadgesEarned}</p>
+        </article>
+        <article className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-textMuted">World Trophies</p>
+          <p className="text-2xl font-semibold text-textPrimary">{progress.worldBadgesEarned}</p>
+        </article>
+      </section>
+
+      {isLoading ? <p className="text-sm text-textSecondary">Loading checkpoint progress...</p> : null}
+      {error ? <p className="text-sm text-error">{error}</p> : null}
+
+      <MapView
+        worldId={activeLevel}
+        onWorldChange={setActiveLevel}
+        progress={progress}
+        recentlyUnlockedStep={showCelebration ? progress.completedSteps : null}
+      />
+
+      {showCelebration ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-full bg-success px-4 py-2 text-sm font-semibold text-white shadow-panel"
+        >
+          Nice! +10 coins and 1 checkpoint cleared
+        </motion.div>
+      ) : null}
     </div>
   )
 }

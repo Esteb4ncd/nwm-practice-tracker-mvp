@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { hasSupabaseEnv, supabase } from '@/lib/supabase'
-import { mockStudents } from '@/lib/mockData'
+import { fetchStudentsByClassCode } from '@/lib/progressionApi'
 import { saveStudentSession, verifyPin } from '@/lib/auth'
 import type { Student } from '@/lib/types'
 
@@ -26,28 +25,18 @@ export function StudentLoginPage() {
   const findClass = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
-    let classStudents: Student[] = []
-
-    if (hasSupabaseEnv && supabase) {
-      const { data, error: rpcError } = await supabase.rpc('students_by_class_code', {
-        class_code_input: classCode,
-      })
-      if (rpcError) {
-        setError(rpcError.message)
+    try {
+      const classStudents = await fetchStudentsByClassCode(classCode)
+      if (!classStudents.length) {
+        setError('No class found with that code.')
         return
       }
-      classStudents = (data as Student[]) ?? []
-    } else {
-      classStudents = mockStudents.filter((student) => student.class_code === classCode)
-    }
 
-    if (!classStudents.length) {
-      setError('No class found with that code.')
-      return
+      setStudents(classStudents)
+      setStep(2)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to find that class right now.')
     }
-
-    setStudents(classStudents)
-    setStep(2)
   }
 
   const validatePin = async (event: FormEvent) => {
@@ -62,7 +51,7 @@ export function StudentLoginPage() {
       setError('Invalid PIN.')
       return
     }
-    saveStudentSession(selectedStudent.id, classCode)
+    saveStudentSession(selectedStudent.id, classCode, selectedStudent.share_token)
     navigate('/student/home')
   }
 

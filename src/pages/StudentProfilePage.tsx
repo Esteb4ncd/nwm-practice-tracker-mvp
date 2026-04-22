@@ -10,7 +10,7 @@ import { useTeacherAuth } from '@/lib/useTeacherAuth'
 import { mockRewards, mockSessions, mockStudents } from '@/lib/mockData'
 import { toTitle } from '@/lib/utils'
 import { colors } from '@/styles/colors'
-import type { Reward, Session, Student } from '@/lib/types'
+import type { ProgressSnapshotRow, Reward, Session, Student, StudentBadge } from '@/lib/types'
 
 export function StudentProfilePage() {
   const { id } = useParams()
@@ -20,6 +20,8 @@ export function StudentProfilePage() {
   const [student, setStudent] = useState<Student | null>(null)
   const [studentRewards, setStudentRewards] = useState<Reward[]>([])
   const [studentSessions, setStudentSessions] = useState<Session[]>([])
+  const [progress, setProgress] = useState<ProgressSnapshotRow | null>(null)
+  const [badges, setBadges] = useState<StudentBadge[]>([])
   const { teacherId } = useTeacherAuth()
 
   const loadProfile = useCallback(async () => {
@@ -33,17 +35,23 @@ export function StudentProfilePage() {
         setStudent(profile.student)
         setStudentRewards(profile.rewards)
         setStudentSessions(profile.sessions)
+        setProgress(profile.progress)
+        setBadges(profile.badges)
       } else {
         const mockStudent = mockStudents.find((entry) => entry.id === id) ?? mockStudents[0]
         setStudent(mockStudent)
         setStudentRewards(mockRewards.filter((reward) => reward.student_id === mockStudent.id))
         setStudentSessions(mockSessions.filter((session) => session.student_id === mockStudent.id))
+        setProgress(null)
+        setBadges([])
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load profile.')
       setStudent(null)
       setStudentRewards([])
       setStudentSessions([])
+      setProgress(null)
+      setBadges([])
     } finally {
       setIsLoading(false)
     }
@@ -124,6 +132,11 @@ export function StudentProfilePage() {
             <p className="text-xs text-textMuted">
               Joined {new Date(student.created_at).toLocaleDateString()} · Last active {student.last_active}
             </p>
+            {progress ? (
+              <p className="text-xs text-textSecondary">
+                Steps {progress.total_steps}/65 · Coins {progress.coin_balance} · Badges {progress.total_badges}
+              </p>
+            ) : null}
           </div>
         </div>
         <Button onClick={() => setPanelOpen(true)}>🌟 Assign Sticker</Button>
@@ -194,6 +207,25 @@ export function StudentProfilePage() {
                 ))
               ) : (
                 <p className="text-sm text-textSecondary">No rewards assigned yet.</p>
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-xl border border-border bg-white p-5">
+            <h3 className="mb-3 text-lg font-semibold text-textPrimary">Badge Unlocks</h3>
+            <div className="space-y-2">
+              {badges.length ? (
+                badges.slice(0, 8).map((badge) => (
+                  <div key={badge.id} className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium text-textPrimary">{badge.badge_label}</p>
+                    <p className="text-xs text-textSecondary">
+                      {badge.badge_type === 'world' ? 'World trophy' : 'Milestone badge'} · World{' '}
+                      {badge.world_id}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-textSecondary">No badges unlocked yet.</p>
               )}
             </div>
           </article>

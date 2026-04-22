@@ -6,8 +6,8 @@ import { RadioGroup } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 import { StickerOption } from './StickerOption'
 import type { RewardType } from '@/lib/types'
-import { hasSupabaseEnv, supabase } from '@/lib/supabase'
 import { useSuccessToast } from '@/components/shared/SuccessToast'
+import { awardSticker } from '@/lib/progressionApi'
 
 interface AssignPanelProps {
   open: boolean
@@ -36,25 +36,13 @@ export function AssignPanel({
     setIsLoading(true)
 
     try {
-      if (hasSupabaseEnv && supabase) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user?.id) throw new Error('Teacher session not found')
-
-        const rows = studentIds.map((studentId) => ({
-          student_id: studentId,
-          type,
-          note: note.trim() || null,
-          assigned_by: user.id,
-        }))
-        const { error } = await supabase.from('rewards').insert(rows)
-        if (error) throw error
+      for (const studentId of studentIds) {
+        await awardSticker(studentId, type, note.trim() || null)
       }
 
       successToast(
         count > 1 ? `Assigned to ${count} students` : `Assigned to ${studentName ?? 'student'}`,
-        'Rewards have been saved successfully.',
+        `Saved successfully. Each sticker clears 1 step and grants ${10 * count} coins.`,
       )
       onClose()
       onAssigned?.()

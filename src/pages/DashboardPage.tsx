@@ -5,11 +5,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { hasSupabaseEnv } from '@/lib/supabase'
 import { mockDashboardRows, mockRewards, mockSessions, mockStudents } from '@/lib/mockData'
 import { fetchTeacherDashboardData } from '@/lib/teacherData'
+import {
+  approvePrizeRedemption,
+  fetchTeacherRedemptionQueue,
+  rejectPrizeRedemption,
+} from '@/lib/progressionApi'
 import { useTeacherAuth } from '@/lib/useTeacherAuth'
 import { StatCard } from '@/components/instructor/StatCard'
 import { StudentTable } from '@/components/instructor/StudentTable'
 import { AssignPanel } from '@/components/instructor/AssignPanel'
-import type { DashboardStudentRow } from '@/lib/types'
+import type { DashboardStudentRow, PrizeRedemption } from '@/lib/types'
 
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -24,6 +29,8 @@ export function DashboardPage() {
     sessionsLogged: 0,
     avgStreak: 0,
   })
+  const [redemptionQueue, setRedemptionQueue] = useState<PrizeRedemption[]>([])
+  const [queueLoading, setQueueLoading] = useState(false)
   const { teacherId } = useTeacherAuth()
 
   const isSelectMode = searchParams.get('mode') === 'select'
@@ -54,9 +61,26 @@ export function DashboardPage() {
     }
   }, [teacherId])
 
+  const loadRedemptionQueue = useCallback(async () => {
+    if (!hasSupabaseEnv) {
+      setRedemptionQueue([])
+      return
+    }
+    setQueueLoading(true)
+    try {
+      const queue = await fetchTeacherRedemptionQueue()
+      setRedemptionQueue(queue)
+    } catch {
+      setRedemptionQueue([])
+    } finally {
+      setQueueLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadDashboardData()
-  }, [loadDashboardData])
+    void loadRedemptionQueue()
+  }, [loadDashboardData, loadRedemptionQueue])
 
   const stats = useMemo(
     () => [
@@ -167,6 +191,55 @@ export function DashboardPage() {
           void loadDashboardData()
         }}
       />
+
+      <section className="rounded-xl border border-border bg-white p-4">
+        <h3 className="mb-3 text-lg font-semibold text-textPrimary">Prize Redemption Queue</h3>
+        {queueLoading ? <p className="text-sm text-textSecondary">Loading requests...</p> : null}
+        {!queueLoading && !redemptionQueue.length ? (
+          <p className="text-sm text-textSecondary">No pending redemptions.</p>
+        ) : null}
+        <div className="space-y-3">
+          {redemptionQueue.map((request) => (
+            <article
+              key={request.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
+            >
+              <div>
+                <p className="font-medium text-textPrimary">
+                  {request.student_username ?? 'Student'} requested {request.prize_title}
+                </p>
+                <p className="text-xs text-textSecondary">
+                  Cost: {request.prize_coin_cost} coins • Status: {request.status}
+                </p>
+              </div>
+              {request.status === 'requested' ? (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      await approvePrizeRedemption(request.id)
+                      await loadRedemptionQueue()
+                      await loadDashboardData()
+                    }}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      await rejectPrizeRedemption(request.id, 'Try again after more practice steps.')
+                      await loadRedemptionQueue()
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
