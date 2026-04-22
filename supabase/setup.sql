@@ -328,9 +328,9 @@ begin
     current_world_id = v_world_id,
     current_world_step = v_world_step,
     unlocked_world_id = v_world_unlocked,
-    milestone_badges = milestone_badges + case when v_is_milestone then 1 else 0 end,
-    world_badges = world_badges + case when v_is_world_complete then 1 else 0 end,
-    total_badges = total_badges
+    milestone_badges = sp.milestone_badges + case when v_is_milestone then 1 else 0 end,
+    world_badges = sp.world_badges + case when v_is_world_complete then 1 else 0 end,
+    total_badges = sp.total_badges
       + case when v_is_milestone then 1 else 0 end
       + case when v_is_world_complete then 1 else 0 end,
     updated_at = now()
