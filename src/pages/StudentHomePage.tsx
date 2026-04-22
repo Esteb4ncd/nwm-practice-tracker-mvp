@@ -4,12 +4,14 @@ import { MapView } from '@/components/student/MapView'
 import { getStudentSession } from '@/lib/auth'
 import { mockStudents } from '@/lib/mockData'
 import { fetchStudentRewards, getStickerCountFromRewards } from '@/lib/studentData'
+import { fetchStudentProgressSnapshot } from '@/lib/progressionApi'
 import { getProgressSnapshotFromStickers, TOTAL_STEPS } from '@/lib/progression'
-import type { Reward } from '@/lib/types'
+import type { ProgressSnapshotRow, Reward } from '@/lib/types'
 
 export function StudentHomePage() {
   const [activeLevel, setActiveLevel] = useState(1)
   const [rewards, setRewards] = useState<Reward[]>([])
+  const [snapshot, setSnapshot] = useState<ProgressSnapshotRow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCelebration, setShowCelebration] = useState(false)
@@ -24,7 +26,10 @@ export function StudentHomePage() {
       setIsLoading(true)
       setError('')
       try {
-        const rows = await fetchStudentRewards(student.id)
+        const [rows, progressSnapshot] = await Promise.all([
+          fetchStudentRewards(student.id, studentSession?.shareToken ?? null),
+          fetchStudentProgressSnapshot(student.id, studentSession?.shareToken ?? null),
+        ])
         if (!active) return
         const stickerCount = getStickerCountFromRewards(rows)
         if (stickerCount > previousStickerCountRef.current && previousStickerCountRef.current > 0) {
@@ -33,6 +38,7 @@ export function StudentHomePage() {
         }
         previousStickerCountRef.current = stickerCount
         setRewards(rows)
+        setSnapshot(progressSnapshot)
       } catch {
         if (!active) return
         setError('Unable to load reward progress right now.')
@@ -45,12 +51,15 @@ export function StudentHomePage() {
     return () => {
       active = false
     }
-  }, [student.id])
+  }, [student.id, studentSession?.shareToken])
 
   const progress = useMemo(() => {
+    if (snapshot) {
+      return getProgressSnapshotFromStickers(snapshot.total_steps)
+    }
     const stickerCount = getStickerCountFromRewards(rewards)
     return getProgressSnapshotFromStickers(stickerCount)
-  }, [rewards])
+  }, [rewards, snapshot])
 
   useEffect(() => {
     if (activeLevel > progress.unlockedWorldId) {
