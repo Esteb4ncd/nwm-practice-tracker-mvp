@@ -16,8 +16,9 @@ export function StudentHomePage() {
   const [error, setError] = useState('')
   const [showCelebration, setShowCelebration] = useState(false)
   const studentSession = getStudentSession()
-  const student =
-    mockStudents.find((entry) => entry.id === studentSession?.studentId) ?? mockStudents[0]
+  const activeStudentId = studentSession?.studentId ?? mockStudents[0].id
+  const displayStudent = mockStudents.find((entry) => entry.id === activeStudentId) ?? null
+  const displayName = displayStudent?.username ?? 'Student'
   const previousStickerCountRef = useRef(0)
 
   useEffect(() => {
@@ -27,8 +28,8 @@ export function StudentHomePage() {
       setError('')
       try {
         const [rows, progressSnapshot] = await Promise.all([
-          fetchStudentRewards(student.id, studentSession?.shareToken ?? null),
-          fetchStudentProgressSnapshot(student.id, studentSession?.shareToken ?? null),
+          fetchStudentRewards(activeStudentId, studentSession?.shareToken ?? null),
+          fetchStudentProgressSnapshot(activeStudentId, studentSession?.shareToken ?? null),
         ])
         if (!active) return
         const stickerCount = getStickerCountFromRewards(rows)
@@ -51,7 +52,7 @@ export function StudentHomePage() {
     return () => {
       active = false
     }
-  }, [student.id, studentSession?.shareToken])
+  }, [activeStudentId, studentSession?.shareToken])
 
   const progress = useMemo(() => {
     if (snapshot) {
@@ -76,7 +77,7 @@ export function StudentHomePage() {
           🎵
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-textPrimary">Hi {student.username}!</h1>
+          <h1 className="text-2xl font-semibold text-textPrimary">Hi {displayName}!</h1>
           <p className="text-sm text-textSecondary">
             You&apos;re on level {progress.currentWorldId}. Keep climbing to checkpoint{' '}
             {Math.min(
