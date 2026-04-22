@@ -1,5 +1,12 @@
 import { supabase } from '@/lib/supabase'
-import type { DashboardStudentRow, Reward, Session, Student } from '@/lib/types'
+import type {
+  DashboardStudentRow,
+  ProgressSnapshotRow,
+  Reward,
+  Session,
+  Student,
+  StudentBadge,
+} from '@/lib/types'
 
 type DashboardPayload = {
   stats: {
@@ -44,7 +51,7 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
 
   const { data: students, error: studentsError } = await supabase
     .from('students')
-    .select('id, teacher_id, username, pin_hash, class_code, level, created_at')
+    .select('id, teacher_id, username, pin_hash, class_code, share_token, level, created_at')
     .eq('teacher_id', teacherId)
 
   if (studentsError) throw studentsError
@@ -64,23 +71,45 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
     }
   }
 
-  const [{ data: rewards, error: rewardsError }, { data: sessions, error: sessionsError }] =
-    await Promise.all([
-      supabase
-        .from('rewards')
-        .select('id, student_id, type, assigned_by, note, created_at')
-        .in('student_id', studentIds),
-      supabase
-        .from('sessions')
-        .select('id, student_id, date, duration_minutes, logged_by, created_at')
-        .in('student_id', studentIds),
-    ])
+  const [
+    { data: rewards, error: rewardsError },
+    { data: sessions, error: sessionsError },
+    { data: progressRows, error: progressError },
+    { data: coinLedgerRows, error: coinLedgerError },
+  ] = await Promise.all([
+    supabase
+      .from('rewards')
+      .select('id, student_id, type, assigned_by, note, created_at')
+      .in('student_id', studentIds),
+    supabase
+      .from('sessions')
+      .select('id, student_id, date, duration_minutes, logged_by, created_at')
+      .in('student_id', studentIds),
+    supabase
+      .from('student_progress')
+      .select(
+        'student_id,total_steps,current_world_id,current_world_step,unlocked_world_id,milestone_badges,world_badges,total_badges',
+      )
+      .in('student_id', studentIds),
+    supabase
+      .from('student_coin_ledger')
+      .select('student_id, amount')
+      .in('student_id', studentIds),
+  ])
 
   if (rewardsError) throw rewardsError
   if (sessionsError) throw sessionsError
+  if (progressError) throw progressError
+  if (coinLedgerError) throw coinLedgerError
 
   const typedRewards = (rewards ?? []) as Reward[]
   const typedSessions = (sessions ?? []) as Session[]
+  const typedProgressRows = (progressRows ?? []) as ProgressSnapshotRow[]
+  const coinByStudentId = (coinLedgerRows ?? []).reduce<Record<string, number>>((acc, row) => {
+    const coinRow = row as { student_id: string; amount: number }
+    acc[coinRow.student_id] = (acc[coinRow.student_id] ?? 0) + coinRow.amount
+    return acc
+  }, {})
   const weekStart = Date.now() - ONE_WEEK_MS
 
   const streaks = typedStudents.map((student) => {
@@ -92,6 +121,7 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
 
   const rows: DashboardStudentRow[] = typedStudents.map((student) => {
     const studentRewards = typedRewards.filter((reward) => reward.student_id === student.id)
+    const progress = typedProgressRows.find((row) => row.student_id === student.id)
     const studentSessions = typedSessions
       .filter((session) => session.student_id === student.id)
       .sort((a, b) => b.date.localeCompare(a.date))
@@ -102,7 +132,11 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
       streak: Math.min(5, getConsecutiveStreak(studentSessions.map((item) => item.date))),
       lastActive: studentSessions[0]?.date ?? 'No sessions',
       instrument: 'Music',
-      level: `Level ${student.level}`,
+      level: progress
+        ? `World ${progress.current_world_id} • Step ${progress.current_world_step}`
+        : `Level ${student.level}`,
+      coins: coinByStudentId[student.id] ?? 0,
+      completedSteps: progress?.total_steps ?? studentRewards.length,
     }
   })
 
@@ -129,7 +163,7 @@ export async function fetchTeacherStudentProfile(teacherId: string, studentId: s
 
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('id, teacher_id, username, pin_hash, class_code, level, created_at')
+    .select('id, teacher_id, username, pin_hash, class_code, share_token, level, created_at')
     .eq('teacher_id', teacherId)
     .eq('id', studentId)
     .maybeSingle()
@@ -137,8 +171,12 @@ export async function fetchTeacherStudentProfile(teacherId: string, studentId: s
   if (studentError) throw studentError
   if (!student) throw new Error('Student not found.')
 
-  const [{ data: rewards, error: rewardsError }, { data: sessions, error: sessionsError }] =
-    await Promise.all([
+  const [
+    { data: rewards, error: rewardsError },
+    { data: sessions, error: sessionsError },
+    { data: progressSnapshot, error: progressError },
+    { data: badges, error: badgesError },
+  ] = await Promise.all([
       supabase
         .from('rewards')
         .select('id, student_id, type, assigned_by, note, created_at')
@@ -149,14 +187,26 @@ export async function fetchTeacherStudentProfile(teacherId: string, studentId: s
         .select('id, student_id, date, duration_minutes, logged_by, created_at')
         .eq('student_id', studentId)
         .order('date', { ascending: false }),
+      supabase.rpc('get_student_progress_snapshot', {
+        p_student_id: studentId,
+        p_share_token: null,
+      }),
+      supabase.rpc('get_student_badges', {
+        p_student_id: studentId,
+        p_share_token: null,
+      }),
     ])
 
   if (rewardsError) throw rewardsError
   if (sessionsError) throw sessionsError
+  if (progressError) throw progressError
+  if (badgesError) throw badgesError
 
   return {
     student: student as Student,
     rewards: (rewards ?? []) as Reward[],
     sessions: (sessions ?? []) as Session[],
+    progress: ((progressSnapshot ?? [])[0] ?? null) as ProgressSnapshotRow | null,
+    badges: (badges ?? []) as StudentBadge[],
   }
 }
