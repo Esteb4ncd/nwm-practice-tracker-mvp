@@ -42,6 +42,8 @@ export function StudentTable({
             <TableHead>Last Active</TableHead>
             <TableHead>Stars</TableHead>
             <TableHead>Streak</TableHead>
+            <TableHead>Steps</TableHead>
+            <TableHead>Coins</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -85,6 +87,8 @@ export function StudentTable({
                     ))}
                   </div>
                 </TableCell>
+                <TableCell className="text-textSecondary">{row.completedSteps ?? 0}/65</TableCell>
+                <TableCell className="text-textSecondary">{row.coins ?? 0}</TableCell>
                 <TableCell>
                   <Link
                     className="font-medium text-primary transition-opacity hover:opacity-80"
