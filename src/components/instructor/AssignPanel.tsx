@@ -54,7 +54,7 @@ export function AssignPanel({
 
       successToast(
         count > 1 ? `Assigned to ${count} students` : `Assigned to ${studentName ?? 'student'}`,
-        'Rewards have been saved successfully.',
+        `Saved successfully. Each sticker clears 1 step and grants ${10 * count} coins.`,
       )
       onClose()
       onAssigned?.()
