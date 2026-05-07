@@ -3,6 +3,7 @@ import { Music2, School, ChartColumn, Star, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { signOutTeacher } from '@/lib/auth'
+import { useTeacherAuth } from '@/lib/useTeacherAuth'
 
 const navItems = [
   { icon: School, label: 'My Class', href: '/dashboard' },
@@ -13,6 +14,9 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation()
+  const { session } = useTeacherAuth()
+  const teacherEmail = session?.user.email ?? 'Teacher'
+  const initials = teacherEmail.slice(0, 2).toUpperCase()
 
   return (
     <aside className="flex h-screen w-[220px] flex-col bg-dark px-4 py-5 text-white">
@@ -46,10 +50,10 @@ export function Sidebar() {
       <div className="mt-auto space-y-3 rounded-lg border border-darkMid p-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
-            DC
+            {initials}
           </div>
           <div>
-            <p className="text-sm font-medium">David Cruz</p>
+            <p className="text-sm font-medium">{teacherEmail}</p>
             <p className="text-xs text-slate-300">Instructor</p>
           </div>
         </div>

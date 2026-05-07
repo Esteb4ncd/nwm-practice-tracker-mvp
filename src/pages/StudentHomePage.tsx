@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { MapView } from '@/components/student/MapView'
 import { getStudentSession } from '@/lib/auth'
-import { mockStudents } from '@/lib/mockData'
 import { fetchStudentRewards, getStickerCountFromRewards } from '@/lib/studentData'
 import { fetchStudentProgressSnapshot } from '@/lib/progressionApi'
 import { getProgressSnapshotFromStickers, TOTAL_STEPS } from '@/lib/progression'
@@ -16,9 +15,8 @@ export function StudentHomePage() {
   const [error, setError] = useState('')
   const [showCelebration, setShowCelebration] = useState(false)
   const studentSession = getStudentSession()
-  const activeStudentId = studentSession?.studentId ?? mockStudents[0].id
-  const displayStudent = mockStudents.find((entry) => entry.id === activeStudentId) ?? null
-  const displayName = displayStudent?.username ?? 'Student'
+  const activeStudentId = studentSession?.studentId ?? null
+  const displayName = studentSession?.username ?? 'Student'
   const previousStickerCountRef = useRef(0)
 
   useEffect(() => {
@@ -27,6 +25,9 @@ export function StudentHomePage() {
       setIsLoading(true)
       setError('')
       try {
+        if (!activeStudentId) {
+          throw new Error('Student session not found. Please sign in again.')
+        }
         const [rows, progressSnapshot] = await Promise.all([
           fetchStudentRewards(activeStudentId, studentSession?.shareToken ?? null),
           fetchStudentProgressSnapshot(activeStudentId, studentSession?.shareToken ?? null),
@@ -40,9 +41,9 @@ export function StudentHomePage() {
         previousStickerCountRef.current = stickerCount
         setRewards(rows)
         setSnapshot(progressSnapshot)
-      } catch {
+      } catch (err) {
         if (!active) return
-        setError('Unable to load reward progress right now.')
+        setError(err instanceof Error ? err.message : 'Unable to load reward progress right now.')
       } finally {
         if (active) setIsLoading(false)
       }
@@ -62,13 +63,14 @@ export function StudentHomePage() {
     return getProgressSnapshotFromStickers(stickerCount)
   }, [rewards, snapshot])
 
-  useEffect(() => {
-    if (activeLevel > progress.unlockedWorldId) {
-      setActiveLevel(progress.unlockedWorldId)
-    }
-  }, [activeLevel, progress.unlockedWorldId])
+  const effectiveActiveLevel = Math.min(activeLevel, progress.unlockedWorldId)
+  const handleWorldChange = (worldId: number) => {
+    setActiveLevel(Math.min(worldId, progress.unlockedWorldId))
+  }
 
-  const currentWorldProgress = progress.worldProgress.find((world) => world.worldId === activeLevel)
+  const currentWorldProgress = progress.worldProgress.find(
+    (world) => world.worldId === effectiveActiveLevel,
+  )
 
   return (
     <div className="space-y-5">
@@ -114,8 +116,8 @@ export function StudentHomePage() {
       {error ? <p className="text-sm text-error">{error}</p> : null}
 
       <MapView
-        worldId={activeLevel}
-        onWorldChange={setActiveLevel}
+        worldId={effectiveActiveLevel}
+        onWorldChange={handleWorldChange}
         progress={progress}
         recentlyUnlockedStep={showCelebration ? progress.completedSteps : null}
       />

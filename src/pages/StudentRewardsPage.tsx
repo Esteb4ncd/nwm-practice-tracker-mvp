@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RewardCard } from '@/components/student/RewardCard'
-import { mockStudents } from '@/lib/mockData'
 import { getStudentSession } from '@/lib/auth'
 import { fetchStudentRewards, getStickerCountFromRewards } from '@/lib/studentData'
 import {
@@ -14,7 +13,7 @@ import type { PrizeCatalogItem, Reward, StudentBadge } from '@/lib/types'
 
 export function StudentRewardsPage() {
   const studentSession = getStudentSession()
-  const studentId = studentSession?.studentId ?? mockStudents[0].id
+  const studentId = studentSession?.studentId ?? null
   const [rewards, setRewards] = useState<Reward[]>([])
   const [prizes, setPrizes] = useState<PrizeCatalogItem[]>([])
   const [badges, setBadges] = useState<StudentBadge[]>([])
@@ -29,6 +28,9 @@ export function StudentRewardsPage() {
       setIsLoading(true)
       setError('')
       try {
+        if (!studentId) {
+          throw new Error('Student session not found. Please sign in again.')
+        }
         const [rows, prizeRows, badgeRows, snapshot] = await Promise.all([
           fetchStudentRewards(studentId, studentSession?.shareToken ?? null),
           fetchPrizeCatalog(studentId, studentSession?.shareToken ?? null),
@@ -39,8 +41,10 @@ export function StudentRewardsPage() {
         if (active) setPrizes(prizeRows)
         if (active) setBadges(badgeRows)
         if (active) setStepsFromServer(snapshot.total_steps)
-      } catch {
-        if (active) setError('Unable to load rewards right now.')
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Unable to load rewards right now.')
+        }
       } finally {
         if (active) setIsLoading(false)
       }
@@ -127,6 +131,10 @@ export function StudentRewardsPage() {
                 className="mt-3 rounded-md bg-dark px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
                 disabled={progress.totalCoins < prize.coin_cost}
                 onClick={async () => {
+                  if (!studentId) {
+                    setRedeemNotice('Student session not found. Please sign in again.')
+                    return
+                  }
                   try {
                     await requestPrizeRedemption(
                       studentId,

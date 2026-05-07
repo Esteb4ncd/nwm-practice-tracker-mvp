@@ -51,7 +51,12 @@ export function StudentLoginPage() {
       setError('Invalid PIN.')
       return
     }
-    saveStudentSession(selectedStudent.id, classCode, selectedStudent.share_token)
+    saveStudentSession(
+      selectedStudent.id,
+      classCode,
+      selectedStudent.share_token,
+      selectedStudent.username,
+    )
     navigate('/student/home')
   }
 
@@ -61,8 +66,8 @@ export function StudentLoginPage() {
         <h2 className="text-3xl font-semibold">Student Portal</h2>
         <p className="mt-2 text-slate-300">Keep your streak alive and unlock new map levels.</p>
         <div className="mt-10 rounded-xl border border-darkMid p-5">
-          <p className="text-sm text-slate-300">Current streak</p>
-          <p className="text-3xl font-bold text-accent">4 days 🔥</p>
+          <p className="text-sm text-slate-300">Live progression</p>
+          <p className="text-lg font-semibold text-accent">Sign in to view your current checkpoint streak.</p>
         </div>
       </aside>
 

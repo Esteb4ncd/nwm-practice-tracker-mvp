@@ -4,10 +4,8 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { AssignPanel } from '@/components/instructor/AssignPanel'
-import { hasSupabaseEnv } from '@/lib/supabase'
 import { fetchTeacherStudentProfile } from '@/lib/teacherData'
 import { useTeacherAuth } from '@/lib/useTeacherAuth'
-import { mockRewards, mockSessions, mockStudents } from '@/lib/mockData'
 import { toTitle } from '@/lib/utils'
 import { colors } from '@/styles/colors'
 import type { ProgressSnapshotRow, Reward, Session, Student, StudentBadge } from '@/lib/types'
@@ -29,22 +27,13 @@ export function StudentProfilePage() {
     setIsLoading(true)
     setError('')
     try {
-      if (hasSupabaseEnv) {
-        if (!teacherId) throw new Error('No teacher session found')
-        const profile = await fetchTeacherStudentProfile(teacherId, id)
-        setStudent(profile.student)
-        setStudentRewards(profile.rewards)
-        setStudentSessions(profile.sessions)
-        setProgress(profile.progress)
-        setBadges(profile.badges)
-      } else {
-        const mockStudent = mockStudents.find((entry) => entry.id === id) ?? mockStudents[0]
-        setStudent(mockStudent)
-        setStudentRewards(mockRewards.filter((reward) => reward.student_id === mockStudent.id))
-        setStudentSessions(mockSessions.filter((session) => session.student_id === mockStudent.id))
-        setProgress(null)
-        setBadges([])
-      }
+      if (!teacherId) throw new Error('No teacher session found')
+      const profile = await fetchTeacherStudentProfile(teacherId, id)
+      setStudent(profile.student)
+      setStudentRewards(profile.rewards)
+      setStudentSessions(profile.sessions)
+      setProgress(profile.progress)
+      setBadges(profile.badges)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load profile.')
       setStudent(null)
@@ -58,6 +47,7 @@ export function StudentProfilePage() {
   }, [id, teacherId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadProfile()
   }, [loadProfile])
 
@@ -89,6 +79,25 @@ export function StudentProfilePage() {
       return activeDates.has(key)
     })
   }, [studentSessions])
+
+  const skillProgress = useMemo(() => {
+    const totalSteps = progress?.total_steps ?? 0
+    const completionPercent = Math.min(100, Math.round((totalSteps / 65) * 100))
+    const rewardCadence = Math.min(
+      100,
+      Math.round((studentRewards.length / Math.max(totalSteps, 1)) * 100),
+    )
+    const consistencyPercent = Math.min(
+      100,
+      Math.round((streakFilled.filter(Boolean).length / 7) * 100),
+    )
+
+    return [
+      { label: 'Progress Completion', value: completionPercent },
+      { label: 'Reward Cadence', value: rewardCadence },
+      { label: 'Practice Consistency', value: consistencyPercent },
+    ]
+  }, [progress?.total_steps, streakFilled, studentRewards.length])
 
   if (isLoading) {
     return (
@@ -177,11 +186,7 @@ export function StudentProfilePage() {
           <article className="rounded-xl border border-border bg-white p-5">
             <h3 className="mb-4 text-lg font-semibold text-textPrimary">Skill Progress</h3>
             <div className="space-y-4">
-              {[
-                { label: 'Rhythm', value: 78 },
-                { label: 'Sight Reading', value: 62 },
-                { label: 'Dynamics', value: 85 },
-              ].map((skill) => (
+              {skillProgress.map((skill) => (
                 <div key={skill.label}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span>{skill.label}</span>

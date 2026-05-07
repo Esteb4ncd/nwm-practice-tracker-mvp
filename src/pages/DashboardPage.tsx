@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { hasSupabaseEnv } from '@/lib/supabase'
-import { mockDashboardRows, mockRewards, mockSessions, mockStudents } from '@/lib/mockData'
 import { fetchTeacherDashboardData } from '@/lib/teacherData'
 import {
   approvePrizeRedemption,
@@ -39,20 +37,10 @@ export function DashboardPage() {
     setIsLoading(true)
     setError('')
     try {
-      if (hasSupabaseEnv) {
-        if (!teacherId) throw new Error('No teacher session found')
-        const payload = await fetchTeacherDashboardData(teacherId)
-        setRows(payload.rows)
-        setStatsPayload(payload.stats)
-      } else {
-        setRows(mockDashboardRows)
-        setStatsPayload({
-          totalStudents: mockStudents.length,
-          starsThisWeek: mockRewards.length,
-          sessionsLogged: mockSessions.length,
-          avgStreak: 4,
-        })
-      }
+      if (!teacherId) throw new Error('No teacher session found')
+      const payload = await fetchTeacherDashboardData(teacherId)
+      setRows(payload.rows)
+      setStatsPayload(payload.stats)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.')
       setRows([])
@@ -62,10 +50,6 @@ export function DashboardPage() {
   }, [teacherId])
 
   const loadRedemptionQueue = useCallback(async () => {
-    if (!hasSupabaseEnv) {
-      setRedemptionQueue([])
-      return
-    }
     setQueueLoading(true)
     try {
       const queue = await fetchTeacherRedemptionQueue()
@@ -78,8 +62,11 @@ export function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    void loadDashboardData()
-    void loadRedemptionQueue()
+    const id = window.setTimeout(() => {
+      void loadDashboardData()
+      void loadRedemptionQueue()
+    }, 0)
+    return () => window.clearTimeout(id)
   }, [loadDashboardData, loadRedemptionQueue])
 
   const stats = useMemo(

@@ -8,3 +8,10 @@ export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey)
 export const supabase = hasSupabaseEnv
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null
+
+export function requireSupabaseClient() {
+  if (!supabase) {
+    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+  }
+  return supabase
+}

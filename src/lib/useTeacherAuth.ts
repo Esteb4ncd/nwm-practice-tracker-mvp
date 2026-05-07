@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { getRole } from '@/lib/auth'
-import { hasSupabaseEnv, supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export function useTeacherAuth() {
   const [session, setSession] = useState<Session | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const isFallbackTeacher = !hasSupabaseEnv && getRole() === 'teacher'
+  const [isLoading, setIsLoading] = useState(Boolean(supabase))
 
   useEffect(() => {
-    if (!hasSupabaseEnv || !supabase) {
-      setSession(null)
-      setIsLoading(false)
-      return
-    }
+    if (!supabase) return
 
     let active = true
     supabase.auth.getSession().then(({ data }) => {
@@ -38,7 +32,7 @@ export function useTeacherAuth() {
   return {
     session,
     isLoading,
-    isAuthenticated: Boolean(session) || isFallbackTeacher,
+    isAuthenticated: Boolean(session),
     teacherId: session?.user?.id ?? null,
   }
 }

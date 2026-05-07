@@ -1,13 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Music2, Map, Gift, UserRound, NotebookPen, Info } from 'lucide-react'
+import { Music2, Map, Gift, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const links = [
   { label: 'Map', href: '/student/home', icon: Map },
   { label: 'Rewards', href: '/student/rewards', icon: Gift },
   { label: 'Character', href: '/student/character', icon: UserRound },
-  { label: 'Blog', href: '#', icon: NotebookPen },
-  { label: 'About', href: '#', icon: Info },
 ]
 
 export function StudentSidebar() {

@@ -35,13 +35,19 @@ export async function verifyPin(pin: string, pinHash: string | null) {
   return pin === pinHash
 }
 
-export function saveStudentSession(studentId: string, classCode: string, shareToken?: string) {
+export function saveStudentSession(
+  studentId: string,
+  classCode: string,
+  shareToken?: string,
+  username?: string,
+) {
   localStorage.setItem(
     STUDENT_SESSION_KEY,
     JSON.stringify({
       studentId,
       classCode,
       shareToken: shareToken ?? null,
+      username: username ?? null,
     }),
   )
   setRole('student')
@@ -51,6 +57,7 @@ export function getStudentSession(): {
   studentId: string
   classCode: string
   shareToken?: string | null
+  username?: string | null
 } | null {
   const session = localStorage.getItem(STUDENT_SESSION_KEY)
   if (!session) return null
@@ -59,6 +66,7 @@ export function getStudentSession(): {
       studentId: string
       classCode: string
       shareToken?: string | null
+      username?: string | null
     }
   } catch {
     return null

@@ -4,8 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Music2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { hasSupabaseEnv, supabase } from '@/lib/supabase'
-import { setRole } from '@/lib/auth'
+import { requireSupabaseClient } from '@/lib/supabase'
 
 export function InstructorLoginPage() {
   const navigate = useNavigate()
@@ -16,8 +15,8 @@ export function InstructorLoginPage() {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
-
-    if (hasSupabaseEnv && supabase) {
+    try {
+      const supabase = requireSupabaseClient()
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -26,15 +25,10 @@ export function InstructorLoginPage() {
         setError(signInError.message)
         return
       }
-    } else {
-      if (!email || !password) {
-        setError('Email and password are required.')
-        return
-      }
-      setRole('teacher')
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in right now.')
     }
-
-    navigate('/dashboard')
   }
 
   return (
