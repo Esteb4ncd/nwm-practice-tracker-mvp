@@ -11,7 +11,7 @@ import type {
 type DashboardPayload = {
   stats: {
     totalStudents: number
-    starsThisWeek: number
+    stickersThisWeek: number
     sessionsLogged: number
     avgStreak: number
   }
@@ -63,7 +63,7 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
     return {
       stats: {
         totalStudents: 0,
-        starsThisWeek: 0,
+        stickersThisWeek: 0,
         sessionsLogged: 0,
         avgStreak: 0,
       },
@@ -133,7 +133,7 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
       lastActive: studentSessions[0]?.date ?? 'No sessions',
       instrument: 'Music',
       level: progress
-        ? `World ${progress.current_world_id} • Step ${progress.current_world_step}`
+        ? `World ${progress.current_world_id} • Level ${progress.current_world_step}`
         : `Level ${student.level}`,
       coins: coinByStudentId[student.id] ?? 0,
       completedSteps: progress?.total_steps ?? studentRewards.length,
@@ -146,7 +146,7 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
   return {
     stats: {
       totalStudents: typedStudents.length,
-      starsThisWeek: typedRewards.filter(
+      stickersThisWeek: typedRewards.filter(
         (reward) => new Date(reward.created_at).getTime() >= weekStart,
       ).length,
       sessionsLogged: typedSessions.length,

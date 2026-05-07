@@ -36,7 +36,7 @@ export function LandingPage() {
             Practice tracking made simple for teachers and students.
           </h1>
           <p className="mt-4 max-w-xl text-base text-textSecondary">
-            Assign stickers, unlock progression checkpoints, and manage prize redemptions from one shared system.
+            Assign stickers, unlock progression levels, and manage prize redemptions from one shared system.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -71,7 +71,7 @@ export function LandingPage() {
                 <h3 className="font-semibold text-textPrimary">Student Portal</h3>
               </div>
               <p className="text-sm text-textSecondary">
-                Practice map, checkpoint milestones, coin economy, and rewards redemption.
+                Practice map, level milestones, coin economy, and rewards redemption.
               </p>
             </article>
             <article className="rounded-xl border border-border p-4">

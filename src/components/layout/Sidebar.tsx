@@ -1,15 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Music2, School, ChartColumn, Star, Settings } from 'lucide-react'
+import { Music2, School, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { signOutTeacher } from '@/lib/auth'
 import { useTeacherAuth } from '@/lib/useTeacherAuth'
 
 const navItems = [
-  { icon: School, label: 'My Class', href: '/dashboard' },
-  { icon: ChartColumn, label: 'Progress', href: '/dashboard' },
-  { icon: Star, label: 'Rewards', href: '/dashboard?mode=select' },
-  { icon: Settings, label: 'Settings', href: '/dashboard' },
+  { icon: School, label: 'Class Dashboard', href: '/dashboard' },
+  { icon: Star, label: 'Assign Stickers', href: '/dashboard?mode=select' },
 ]
 
 export function Sidebar() {
@@ -30,7 +28,10 @@ export function Sidebar() {
 
       <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.href || location.pathname.startsWith('/students/')
+          const isSelectRoute = item.href.includes('mode=select')
+          const isActive = isSelectRoute
+            ? location.pathname === '/dashboard' && location.search.includes('mode=select')
+            : location.pathname === item.href || location.pathname.startsWith('/students/')
           return (
             <Link
               key={item.label}

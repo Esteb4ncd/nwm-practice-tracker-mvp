@@ -366,7 +366,7 @@ begin
       'milestone',
       v_completed_world_id,
       v_new_total,
-      format('Level %s milestone (%s steps)', v_completed_world_id, v_step_in_world)
+      format('World %s milestone (%s levels)', v_completed_world_id, v_step_in_world)
     )
     on conflict (student_id, badge_key) do nothing;
   end if;
@@ -386,7 +386,7 @@ begin
       'world',
       v_completed_world_id,
       v_new_total,
-      format('Level %s completion trophy', v_completed_world_id)
+      format('World %s completion trophy', v_completed_world_id)
     )
     on conflict (student_id, badge_key) do nothing;
 

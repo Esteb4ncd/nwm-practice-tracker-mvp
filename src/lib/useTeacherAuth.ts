@@ -8,17 +8,33 @@ export function useTeacherAuth() {
 
   useEffect(() => {
     if (!supabase) return
+    const client = supabase
 
     let active = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return
-      setSession(data.session)
-      setIsLoading(false)
-    })
+    client.auth
+      .getSession()
+      .then(async ({ data, error }) => {
+        if (!active) return
+        if (error) {
+          // Recover from stale local auth state (for example, invalid refresh token).
+          await client.auth.signOut({ scope: 'local' })
+          setSession(null)
+          setIsLoading(false)
+          return
+        }
+        setSession(data.session)
+        setIsLoading(false)
+      })
+      .catch(async () => {
+        if (!active) return
+        await client.auth.signOut({ scope: 'local' })
+        setSession(null)
+        setIsLoading(false)
+      })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setIsLoading(false)
     })

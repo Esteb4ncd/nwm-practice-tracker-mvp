@@ -5,7 +5,7 @@ import { TopBar } from './TopBar'
 const pageMeta: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': {
     title: 'Class Dashboard',
-    subtitle: 'Track student momentum and assign rewards',
+    subtitle: 'Track student momentum and assign stickers',
   },
 }
 
@@ -18,7 +18,7 @@ export function InstructorLayout() {
       }
     : pageMeta[location.pathname] ?? {
         title: 'Teacher Portal',
-        subtitle: 'Manage your class and reward progress',
+        subtitle: 'Manage your class progression and sticker awards',
       }
 
   return (

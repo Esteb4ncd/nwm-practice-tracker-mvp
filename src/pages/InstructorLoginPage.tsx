@@ -63,9 +63,7 @@ export function InstructorLoginPage() {
         </div>
 
         <div className="mt-4 space-y-2 text-center text-sm">
-          <a href="#" className="text-textSecondary hover:text-primary">
-            Forgot password?
-          </a>
+          <p className="text-textSecondary">Use Supabase Auth password reset for teacher accounts.</p>
           <p className="text-textMuted">
             For student login, use the{' '}
             <Link className="text-primary" to="/login/student">

@@ -14,6 +14,10 @@ import { StudentTable } from '@/components/instructor/StudentTable'
 import { AssignPanel } from '@/components/instructor/AssignPanel'
 import type { DashboardStudentRow, PrizeRedemption } from '@/lib/types'
 
+function dedupeById<T extends { id: string }>(rows: T[]) {
+  return Array.from(new Map(rows.map((row) => [row.id, row])).values())
+}
+
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -23,7 +27,7 @@ export function DashboardPage() {
   const [rows, setRows] = useState<DashboardStudentRow[]>([])
   const [statsPayload, setStatsPayload] = useState({
     totalStudents: 0,
-    starsThisWeek: 0,
+    stickersThisWeek: 0,
     sessionsLogged: 0,
     avgStreak: 0,
   })
@@ -39,7 +43,7 @@ export function DashboardPage() {
     try {
       if (!teacherId) throw new Error('No teacher session found')
       const payload = await fetchTeacherDashboardData(teacherId)
-      setRows(payload.rows)
+      setRows(dedupeById(payload.rows))
       setStatsPayload(payload.stats)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load dashboard data.')
@@ -53,7 +57,7 @@ export function DashboardPage() {
     setQueueLoading(true)
     try {
       const queue = await fetchTeacherRedemptionQueue()
-      setRedemptionQueue(queue)
+      setRedemptionQueue(dedupeById(queue))
     } catch {
       setRedemptionQueue([])
     } finally {
@@ -72,7 +76,7 @@ export function DashboardPage() {
   const stats = useMemo(
     () => [
       { label: 'Total Students', value: String(statsPayload.totalStudents) },
-      { label: 'Stars This Week', value: String(statsPayload.starsThisWeek) },
+      { label: 'Stickers This Week', value: String(statsPayload.stickersThisWeek) },
       { label: 'Sessions Logged', value: String(statsPayload.sessionsLogged) },
       { label: 'Avg. Streak', value: `${statsPayload.avgStreak} days` },
     ],
@@ -101,7 +105,7 @@ export function DashboardPage() {
               Cancel
             </Button>
             <Button onClick={() => setPanelOpen(true)} disabled={!selectedIds.length}>
-              🌟 Assign Reward
+              🌟 Assign Sticker
             </Button>
           </div>
         </div>
@@ -124,7 +128,7 @@ export function DashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Sort by Name</SelectItem>
-                <SelectItem value="stars">Sort by Stars</SelectItem>
+                <SelectItem value="stars">Sort by Stickers</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -163,7 +167,7 @@ export function DashboardPage() {
         ) : (
           <div className="rounded-xl border border-border bg-white p-6">
             <p className="text-sm text-textSecondary">
-              No students yet. Add students to your class to start assigning rewards.
+              No students yet. Add students to your class to start assigning stickers.
             </p>
           </div>
         )

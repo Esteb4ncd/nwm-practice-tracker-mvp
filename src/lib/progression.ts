@@ -5,8 +5,8 @@ export const WORLDS = [
   {
     id: 1,
     key: 'mountain-1',
-    label: 'Level 1',
-    subtitle: 'Starting Mountain',
+    label: 'World 1',
+    subtitle: 'Beginner Path',
     difficulty: 'Easy',
     steps: 15,
     theme: 'forest' as const,
@@ -14,8 +14,8 @@ export const WORLDS = [
   {
     id: 2,
     key: 'mountain-2',
-    label: 'Level 2',
-    subtitle: 'Middle Climb',
+    label: 'World 2',
+    subtitle: 'Intermediate Path',
     difficulty: 'Medium',
     steps: 20,
     theme: 'canyon' as const,
@@ -23,8 +23,8 @@ export const WORLDS = [
   {
     id: 3,
     key: 'mountain-3',
-    label: 'Level 3',
-    subtitle: 'Final Ascent',
+    label: 'World 3',
+    subtitle: 'Advanced Path',
     difficulty: 'Advanced',
     steps: 30,
     theme: 'summit' as const,

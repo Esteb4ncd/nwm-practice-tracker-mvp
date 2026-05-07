@@ -49,7 +49,7 @@ export function AssignPanel({
       setNote('')
       setType('star')
     } catch {
-      successToast('Unable to assign reward', 'Please check your Supabase connection.')
+      successToast('Unable to assign sticker', 'Please check your Supabase connection.')
     } finally {
       setIsLoading(false)
     }
@@ -69,7 +69,7 @@ export function AssignPanel({
             <header className="border-b border-border px-5 py-4">
               <div className="mb-1 flex items-start justify-between">
                 <h3 className="text-lg font-semibold text-textPrimary">
-                  {studentName ? 'Assign Sticker' : 'Assign Reward'}
+                  Assign Sticker
                 </h3>
                 <button onClick={onClose} aria-label="Close assign panel">
                   <X className="h-4 w-4 text-textSecondary" />
@@ -109,7 +109,7 @@ export function AssignPanel({
               <div>
                 <p className="mb-2 text-sm font-semibold text-textPrimary">Optional note</p>
                 <Textarea
-                  placeholder="Add context for this reward..."
+                  placeholder="Add context for this sticker..."
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                 />

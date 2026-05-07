@@ -46,6 +46,10 @@ export function StudentLoginPage() {
       setError('Please choose your name first.')
       return
     }
+    if (!selectedStudent.share_token) {
+      setError('This student account is missing a share token. Ask your teacher to re-create the student login.')
+      return
+    }
     const isValid = await verifyPin(pin, selectedStudent.pin_hash)
     if (!isValid) {
       setError('Invalid PIN.')
@@ -64,10 +68,10 @@ export function StudentLoginPage() {
     <div className="grid min-h-screen md:grid-cols-2">
       <aside className="bg-darkDeep p-6 text-white sm:p-10">
         <h2 className="text-2xl font-semibold sm:text-3xl">Student Portal</h2>
-        <p className="mt-2 text-slate-300">Keep your streak alive and unlock new map levels.</p>
+        <p className="mt-2 text-slate-300">Keep your streak alive and unlock new world levels.</p>
         <div className="mt-10 rounded-xl border border-darkMid p-5">
           <p className="text-sm text-slate-300">Live progression</p>
-          <p className="text-lg font-semibold text-accent">Sign in to view your current checkpoint streak.</p>
+          <p className="text-lg font-semibold text-accent">Sign in to view your current level streak.</p>
         </div>
       </aside>
 

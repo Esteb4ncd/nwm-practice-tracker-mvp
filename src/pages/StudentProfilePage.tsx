@@ -10,6 +10,10 @@ import { toTitle } from '@/lib/utils'
 import { colors } from '@/styles/colors'
 import type { ProgressSnapshotRow, Reward, Session, Student, StudentBadge } from '@/lib/types'
 
+function dedupeById<T extends { id: string }>(rows: T[]) {
+  return Array.from(new Map(rows.map((row) => [row.id, row])).values())
+}
+
 export function StudentProfilePage() {
   const { id } = useParams()
   const [isPanelOpen, setPanelOpen] = useState(false)
@@ -30,10 +34,10 @@ export function StudentProfilePage() {
       if (!teacherId) throw new Error('No teacher session found')
       const profile = await fetchTeacherStudentProfile(teacherId, id)
       setStudent(profile.student)
-      setStudentRewards(profile.rewards)
-      setStudentSessions(profile.sessions)
+      setStudentRewards(dedupeById(profile.rewards))
+      setStudentSessions(dedupeById(profile.sessions))
       setProgress(profile.progress)
-      setBadges(profile.badges)
+      setBadges(dedupeById(profile.badges))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load profile.')
       setStudent(null)
@@ -136,7 +140,10 @@ export function StudentProfilePage() {
           <div>
             <h2 className="text-xl font-semibold text-textPrimary">{student.username}</h2>
             <p className="text-sm text-textSecondary">
-              {student.instrument} · Level {student.level}
+              {student.instrument} ·{' '}
+              {progress
+                ? `World ${progress.current_world_id} • Level ${progress.current_world_step}`
+                : `Level ${student.level}`}
             </p>
             <p className="text-xs text-textMuted">
               Joined {new Date(student.created_at).toLocaleDateString()} · Last active {student.last_active}
@@ -153,8 +160,8 @@ export function StudentProfilePage() {
         </Button>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
-        <section className="space-y-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[1.2fr_1fr]">
+        <section className="min-w-0 space-y-5">
           <article className="rounded-xl border border-border bg-white p-5">
             <h3 className="text-lg font-semibold text-textPrimary">Practice Streak</h3>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -173,7 +180,7 @@ export function StudentProfilePage() {
 
           <article className="rounded-xl border border-border bg-white p-5">
             <h3 className="mb-3 text-lg font-semibold text-textPrimary">Weekly Practice</h3>
-            <div className="h-64">
+            <div className="h-64 min-w-0">
               <ResponsiveContainer>
                 <BarChart data={chartData}>
                   <XAxis dataKey="day" />

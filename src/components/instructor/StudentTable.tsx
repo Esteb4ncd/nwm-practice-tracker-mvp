@@ -40,7 +40,7 @@ export function StudentTable({
             ) : null}
             <TableHead>Name</TableHead>
             <TableHead>Last Active</TableHead>
-            <TableHead>Stars</TableHead>
+            <TableHead>Stickers</TableHead>
             <TableHead>Streak</TableHead>
             <TableHead>Steps</TableHead>
             <TableHead>Coins</TableHead>
@@ -73,7 +73,7 @@ export function StudentTable({
                   </p>
                 </TableCell>
                 <TableCell className="text-textSecondary">{row.lastActive}</TableCell>
-                <TableCell>{'⭐'.repeat(row.stars)}</TableCell>
+                <TableCell className="text-textSecondary">{row.stars} stickers</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, index) => (

@@ -11,9 +11,14 @@ import {
 import { getProgressSnapshotFromStickers, TOTAL_STEPS, WORLDS } from '@/lib/progression'
 import type { PrizeCatalogItem, Reward, StudentBadge } from '@/lib/types'
 
+function dedupeById<T extends { id: string }>(rows: T[]) {
+  return Array.from(new Map(rows.map((row) => [row.id, row])).values())
+}
+
 export function StudentRewardsPage() {
   const studentSession = getStudentSession()
   const studentId = studentSession?.studentId ?? null
+  const studentShareToken = studentSession?.shareToken ?? null
   const [rewards, setRewards] = useState<Reward[]>([])
   const [prizes, setPrizes] = useState<PrizeCatalogItem[]>([])
   const [badges, setBadges] = useState<StudentBadge[]>([])
@@ -31,15 +36,18 @@ export function StudentRewardsPage() {
         if (!studentId) {
           throw new Error('Student session not found. Please sign in again.')
         }
+        if (!studentShareToken) {
+          throw new Error('Student session expired. Please sign in again from Student Login.')
+        }
         const [rows, prizeRows, badgeRows, snapshot] = await Promise.all([
-          fetchStudentRewards(studentId, studentSession?.shareToken ?? null),
-          fetchPrizeCatalog(studentId, studentSession?.shareToken ?? null),
-          fetchStudentBadges(studentId, studentSession?.shareToken ?? null),
-          fetchStudentProgressSnapshot(studentId, studentSession?.shareToken ?? null),
+          fetchStudentRewards(studentId, studentShareToken),
+          fetchPrizeCatalog(studentId, studentShareToken),
+          fetchStudentBadges(studentId, studentShareToken),
+          fetchStudentProgressSnapshot(studentId, studentShareToken),
         ])
-        if (active) setRewards(rows)
-        if (active) setPrizes(prizeRows)
-        if (active) setBadges(badgeRows)
+        if (active) setRewards(dedupeById(rows))
+        if (active) setPrizes(dedupeById(prizeRows))
+        if (active) setBadges(dedupeById(badgeRows))
         if (active) setStepsFromServer(snapshot.total_steps)
       } catch (err) {
         if (active) {
@@ -53,7 +61,7 @@ export function StudentRewardsPage() {
     return () => {
       active = false
     }
-  }, [studentId, studentSession?.shareToken])
+  }, [studentId, studentShareToken])
 
   const progress = useMemo(() => {
     return getProgressSnapshotFromStickers(
@@ -81,11 +89,11 @@ export function StudentRewardsPage() {
           </p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
-          <p className="text-sm text-textSecondary">Checkpoints cleared</p>
+          <p className="text-sm text-textSecondary">Levels cleared</p>
           <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
             {progress.completedSteps}/{TOTAL_STEPS}
           </p>
-          <p className="text-xs text-textMuted">1 sticker = 1 completed step</p>
+          <p className="text-xs text-textMuted">1 sticker = 1 completed level</p>
         </article>
       </section>
 
@@ -113,7 +121,7 @@ export function StudentRewardsPage() {
         <article className="rounded-xl border border-border bg-white p-4">
           <h3 className="text-base font-semibold text-textPrimary">Prize Economy</h3>
           <div className="mt-3 space-y-3 text-sm text-textSecondary">
-            <p>Complete 1 step = 10 coins</p>
+            <p>Complete 1 level = 10 coins</p>
             <p>Complete a world = +30 bonus coins</p>
             <p>Example reward: Candy = 30 coins</p>
             <p>Use coins for real-world prizes and badges for avatar styles/accessories.</p>
@@ -141,7 +149,7 @@ export function StudentRewardsPage() {
                     await requestPrizeRedemption(
                       studentId,
                       prize.id,
-                      studentSession?.shareToken ?? null,
+                      studentShareToken,
                       'Student requested from rewards page.',
                     )
                     setRedeemNotice(`Requested ${prize.title}. Waiting for teacher approval.`)

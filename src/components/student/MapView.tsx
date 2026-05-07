@@ -62,7 +62,7 @@ export function MapView({ worldId, onWorldChange, progress, recentlyUnlockedStep
         ))}
       </div>
       <p className="mb-4 text-sm text-textSecondary">
-        {world.subtitle} • {world.steps} checkpoints • Difficulty: {world.difficulty}
+        {world.subtitle} • {world.steps} levels • Difficulty: {world.difficulty}
       </p>
 
       <div className="relative h-[420px] overflow-hidden rounded-xl border border-border bg-neutral sm:h-[520px]" aria-label="Student progress map">

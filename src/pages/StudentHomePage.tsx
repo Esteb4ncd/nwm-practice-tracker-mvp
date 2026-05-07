@@ -16,6 +16,7 @@ export function StudentHomePage() {
   const [showCelebration, setShowCelebration] = useState(false)
   const studentSession = getStudentSession()
   const activeStudentId = studentSession?.studentId ?? null
+  const studentShareToken = studentSession?.shareToken ?? null
   const displayName = studentSession?.username ?? 'Student'
   const previousStickerCountRef = useRef(0)
 
@@ -28,9 +29,12 @@ export function StudentHomePage() {
         if (!activeStudentId) {
           throw new Error('Student session not found. Please sign in again.')
         }
+        if (!studentShareToken) {
+          throw new Error('Student session expired. Please sign in again from Student Login.')
+        }
         const [rows, progressSnapshot] = await Promise.all([
-          fetchStudentRewards(activeStudentId, studentSession?.shareToken ?? null),
-          fetchStudentProgressSnapshot(activeStudentId, studentSession?.shareToken ?? null),
+          fetchStudentRewards(activeStudentId, studentShareToken),
+          fetchStudentProgressSnapshot(activeStudentId, studentShareToken),
         ])
         if (!active) return
         const stickerCount = getStickerCountFromRewards(rows)
@@ -53,7 +57,7 @@ export function StudentHomePage() {
     return () => {
       active = false
     }
-  }, [activeStudentId, studentSession?.shareToken])
+  }, [activeStudentId, studentShareToken])
 
   const progress = useMemo(() => {
     if (snapshot) {
@@ -81,7 +85,7 @@ export function StudentHomePage() {
         <div>
           <h1 className="text-xl font-semibold text-textPrimary sm:text-2xl">Hi {displayName}!</h1>
           <p className="text-sm text-textSecondary">
-            You&apos;re on level {progress.currentWorldId}. Keep climbing to checkpoint{' '}
+            You&apos;re in world {progress.currentWorldId}. Keep climbing to level{' '}
             {Math.min(
               currentWorldProgress?.totalSteps ?? 1,
               progress.currentStep - ((currentWorldProgress?.startStep ?? 1) - 1),
@@ -93,7 +97,7 @@ export function StudentHomePage() {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-border bg-white p-4">
-          <p className="text-xs text-textMuted">Completed Steps</p>
+          <p className="text-xs text-textMuted">Completed Levels</p>
           <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
             {progress.completedSteps}/{TOTAL_STEPS}
           </p>
@@ -114,7 +118,7 @@ export function StudentHomePage() {
         </article>
       </section>
 
-      {isLoading ? <p className="text-sm text-textSecondary">Loading checkpoint progress...</p> : null}
+      {isLoading ? <p className="text-sm text-textSecondary">Loading world progress...</p> : null}
       {error ? <p className="text-sm text-error">{error}</p> : null}
 
       <MapView
@@ -131,7 +135,7 @@ export function StudentHomePage() {
           exit={{ opacity: 0, y: 20 }}
           className="fixed bottom-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-full bg-success px-4 py-2 text-center text-sm font-semibold text-white shadow-panel"
         >
-          Nice! +10 coins and 1 checkpoint cleared
+          Nice! +10 coins and 1 level cleared
         </motion.div>
       ) : null}
     </div>
