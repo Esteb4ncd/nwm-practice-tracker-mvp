@@ -81,16 +81,16 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, index) => (
           <StatCard key={stat.label} label={stat.label} value={stat.value} index={index} />
         ))}
       </div>
 
       {isSelectMode ? (
-        <div className="flex items-center justify-between rounded-xl bg-dark px-4 py-3 text-white">
+        <div className="flex flex-col gap-3 rounded-xl bg-dark px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium">{selectedIds.length} students selected</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               onClick={() => {
@@ -108,9 +108,9 @@ export function DashboardPage() {
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
           <Button onClick={() => setSearchParams({ mode: 'select' })}>☑ Select & Assign</Button>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Select defaultValue="all">
-              <SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Filter" />
               </SelectTrigger>
               <SelectContent>
@@ -119,7 +119,7 @@ export function DashboardPage() {
               </SelectContent>
             </Select>
             <Select defaultValue="name">
-              <SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -200,7 +200,7 @@ export function DashboardPage() {
                 </p>
               </div>
               {request.status === 'requested' ? (
-                <div className="flex gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                   <Button
                     size="sm"
                     onClick={async () => {

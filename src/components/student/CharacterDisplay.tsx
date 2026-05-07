@@ -8,16 +8,16 @@ export function CharacterDisplay() {
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-      <div className="rounded-xl border border-border bg-white p-6">
+      <div className="rounded-xl border border-border bg-white p-4 sm:p-6">
         <p className="text-sm text-textSecondary">My Character</p>
-        <div className="mt-4 flex h-48 items-center justify-center rounded-xl bg-neutral text-7xl">
+        <div className="mt-4 flex h-44 items-center justify-center rounded-xl bg-neutral text-6xl sm:h-48 sm:text-7xl">
           {activeAvatar}
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-white p-6">
+      <div className="rounded-xl border border-border bg-white p-4 sm:p-6">
         <p className="mb-3 text-sm font-semibold text-textPrimary">Choose Avatar Style</p>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {avatars.map((avatar) => (
             <Button
               key={avatar}

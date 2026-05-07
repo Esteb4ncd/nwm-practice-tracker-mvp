@@ -125,8 +125,8 @@ export function StudentProfilePage() {
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-white p-5">
-        <div className="flex items-center gap-4">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-white p-4 sm:p-5">
+        <div className="flex w-full items-center gap-4 sm:w-auto">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-white">
             {student.username
               .split(' ')
@@ -148,18 +148,20 @@ export function StudentProfilePage() {
             ) : null}
           </div>
         </div>
-        <Button onClick={() => setPanelOpen(true)}>🌟 Assign Sticker</Button>
+        <Button onClick={() => setPanelOpen(true)} className="w-full sm:w-auto">
+          🌟 Assign Sticker
+        </Button>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
         <section className="space-y-5">
           <article className="rounded-xl border border-border bg-white p-5">
             <h3 className="text-lg font-semibold text-textPrimary">Practice Streak</h3>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
                 <div
                   key={day + index}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs sm:h-10 sm:w-10 sm:text-sm ${
                     streakFilled[index] ? 'bg-success text-white' : 'bg-border text-textMuted'
                   }`}
                 >
@@ -242,7 +244,7 @@ export function StudentProfilePage() {
                 studentSessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex items-center justify-between border-b border-border py-2"
+                    className="flex flex-wrap items-center justify-between gap-1 border-b border-border py-2"
                   >
                     <p className="text-sm text-textPrimary">{session.date}</p>
                     <p className="text-xs text-textSecondary">
