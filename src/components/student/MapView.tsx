@@ -47,7 +47,7 @@ export function MapView({ worldId, onWorldChange, progress, recentlyUnlockedStep
         : 'from-primary/25 via-secondary/25 to-dark/20'
 
   return (
-    <section className="rounded-2xl border border-border bg-white p-4">
+    <section className="rounded-2xl border border-border bg-white p-3 sm:p-4">
       <div className="mb-2 flex flex-wrap gap-2">
         {WORLDS.map((item) => (
           <Button
@@ -65,10 +65,7 @@ export function MapView({ worldId, onWorldChange, progress, recentlyUnlockedStep
         {world.subtitle} • {world.steps} checkpoints • Difficulty: {world.difficulty}
       </p>
 
-      <div
-        className="relative h-[520px] overflow-hidden rounded-xl border border-border bg-neutral"
-        aria-label="Student progress map"
-      >
+      <div className="relative h-[420px] overflow-hidden rounded-xl border border-border bg-neutral sm:h-[520px]" aria-label="Student progress map">
         <div className={`absolute inset-0 bg-gradient-to-b ${worldThemeClass}`} />
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           <polyline

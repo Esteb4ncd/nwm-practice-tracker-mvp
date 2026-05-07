@@ -11,8 +11,8 @@ const links = [
 export function StudentSidebar() {
   const location = useLocation()
   return (
-    <aside className="w-[240px] border-r border-border bg-white">
-      <div className="bg-studentTeal p-5 text-white">
+    <aside className="w-full border-b border-border bg-white lg:w-[240px] lg:border-r lg:border-b-0">
+      <div className="bg-studentTeal px-4 py-3 text-white lg:p-5">
         <div className="mb-1 flex items-center gap-2">
           <Music2 className="h-5 w-5" />
           <span className="font-semibold">New West Music</span>
@@ -20,13 +20,13 @@ export function StudentSidebar() {
         <p className="text-xs text-white/85">Student Adventure Portal</p>
       </div>
 
-      <nav className="space-y-1 p-4">
+      <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1 lg:overflow-visible lg:p-4">
         {links.map((item) => (
           <Link
             key={item.label}
             to={item.href}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-textSecondary transition-colors',
+              'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs text-textSecondary transition-colors sm:text-sm lg:gap-3',
               location.pathname === item.href && 'bg-neutral font-semibold text-textPrimary',
             )}
           >

@@ -74,12 +74,12 @@ export function StudentHomePage() {
 
   return (
     <div className="space-y-5">
-      <section className="flex items-center gap-4 rounded-xl border border-border bg-white p-5">
+      <section className="flex items-center gap-4 rounded-xl border border-border bg-white p-4 sm:p-5">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-studentTeal text-2xl">
           🎵
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-textPrimary">Hi {displayName}!</h1>
+          <h1 className="text-xl font-semibold text-textPrimary sm:text-2xl">Hi {displayName}!</h1>
           <p className="text-sm text-textSecondary">
             You&apos;re on level {progress.currentWorldId}. Keep climbing to checkpoint{' '}
             {Math.min(
@@ -94,21 +94,23 @@ export function StudentHomePage() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-xs text-textMuted">Completed Steps</p>
-          <p className="text-2xl font-semibold text-textPrimary">
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
             {progress.completedSteps}/{TOTAL_STEPS}
           </p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-xs text-textMuted">Coins</p>
-          <p className="text-2xl font-semibold text-textPrimary">{progress.totalCoins}</p>
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">{progress.totalCoins}</p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-xs text-textMuted">Milestone Badges</p>
-          <p className="text-2xl font-semibold text-textPrimary">{progress.milestoneBadgesEarned}</p>
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
+            {progress.milestoneBadgesEarned}
+          </p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-xs text-textMuted">World Trophies</p>
-          <p className="text-2xl font-semibold text-textPrimary">{progress.worldBadgesEarned}</p>
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">{progress.worldBadgesEarned}</p>
         </article>
       </section>
 
@@ -127,7 +129,7 @@ export function StudentHomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-full bg-success px-4 py-2 text-sm font-semibold text-white shadow-panel"
+          className="fixed bottom-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-full bg-success px-4 py-2 text-center text-sm font-semibold text-white shadow-panel"
         >
           Nice! +10 coins and 1 checkpoint cleared
         </motion.div>

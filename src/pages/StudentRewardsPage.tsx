@@ -63,24 +63,26 @@ export function StudentRewardsPage() {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-sm text-textSecondary">Coins (spend on real rewards)</p>
-          <p className="text-2xl font-semibold text-textPrimary">{progress.totalCoins}</p>
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">{progress.totalCoins}</p>
           <p className="text-xs text-textMuted">
             {progress.baseCoins} base + {progress.worldBonusCoins} world bonus
           </p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-sm text-textSecondary">Badges (avatar unlock track)</p>
-          <p className="text-2xl font-semibold text-textPrimary">{progress.totalBadgesEarned}</p>
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
+            {progress.totalBadgesEarned}
+          </p>
           <p className="text-xs text-textMuted">
             {progress.milestoneBadgesEarned} milestone + {progress.worldBadgesEarned} world trophies
           </p>
         </article>
         <article className="rounded-xl border border-border bg-white p-4">
           <p className="text-sm text-textSecondary">Checkpoints cleared</p>
-          <p className="text-2xl font-semibold text-textPrimary">
+          <p className="text-xl font-semibold text-textPrimary sm:text-2xl">
             {progress.completedSteps}/{TOTAL_STEPS}
           </p>
           <p className="text-xs text-textMuted">1 sticker = 1 completed step</p>
@@ -92,11 +94,11 @@ export function StudentRewardsPage() {
           <h3 className="text-base font-semibold text-textPrimary">Badge Milestones by World</h3>
           <div className="mt-3 space-y-2">
             {WORLDS.map((world) => (
-              <div key={world.id} className="flex items-center justify-between text-sm">
+              <div key={world.id} className="flex items-center justify-between gap-3 text-sm">
                 <p className="text-textSecondary">
                   {world.label} ({world.steps} steps)
                 </p>
-                <p className="font-medium text-textPrimary">
+                <p className="text-right font-medium text-textPrimary">
                   {progress.worldProgress.find((entry) => entry.worldId === world.id)?.milestoneBadges ?? 0}/
                   {progress.badgeMomentsPerWorld[world.id] - 1} + Trophy
                 </p>

@@ -63,7 +63,7 @@ export function AssignPanel({
           animate={{ x: 0 }}
           exit={{ x: 340 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed right-0 top-0 z-50 h-full w-[340px] border-l-4 border-dark bg-white shadow-xl"
+          className="fixed right-0 top-0 z-50 h-full w-full border-l-4 border-dark bg-white shadow-xl sm:w-[340px]"
         >
           <div className="flex h-full flex-col">
             <header className="border-b border-border px-5 py-4">

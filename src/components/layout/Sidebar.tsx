@@ -19,8 +19,8 @@ export function Sidebar() {
   const initials = teacherEmail.slice(0, 2).toUpperCase()
 
   return (
-    <aside className="flex h-screen w-[220px] flex-col bg-dark px-4 py-5 text-white">
-      <div className="mb-8 flex items-center gap-2">
+    <aside className="w-full border-b border-darkMid bg-dark px-4 py-4 text-white lg:h-screen lg:w-[220px] lg:border-b-0">
+      <div className="mb-4 flex items-center gap-2 lg:mb-8">
         <Music2 className="h-5 w-5 text-accent" />
         <div>
           <p className="text-base font-semibold">MusicApp</p>
@@ -28,7 +28,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="space-y-1">
+      <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href || location.pathname.startsWith('/students/')
           return (
@@ -36,7 +36,7 @@ export function Sidebar() {
               key={item.label}
               to={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-full px-3 py-2 text-sm text-slate-200',
+                'flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs text-slate-200 sm:text-sm lg:gap-3',
                 isActive && 'bg-darkMid font-semibold text-white',
               )}
             >
@@ -47,7 +47,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto space-y-3 rounded-lg border border-darkMid p-3">
+      <div className="mt-4 space-y-3 rounded-lg border border-darkMid p-3 lg:mt-auto">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
             {initials}

@@ -29,8 +29,8 @@ export function StudentTable({
   const allSelected = selectedIds.length === rows.length && rows.length > 0
 
   return (
-    <div className="rounded-xl border border-border bg-white">
-      <Table>
+    <div className="overflow-x-auto rounded-xl border border-border bg-white">
+      <Table className="min-w-[760px]">
         <TableHeader>
           <TableRow>
             {isSelectMode ? (
