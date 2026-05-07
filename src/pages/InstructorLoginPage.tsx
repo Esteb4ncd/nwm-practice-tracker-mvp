@@ -33,12 +33,12 @@ export function InstructorLoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral px-4">
-      <form onSubmit={onSubmit} className="w-full max-w-md rounded-xl border border-border bg-white p-8">
+      <form onSubmit={onSubmit} className="w-full max-w-md rounded-xl border border-border bg-white p-6 sm:p-8">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-dark text-white">
             <Music2 className="h-5 w-5" />
           </div>
-          <h1 className="text-2xl font-semibold text-textPrimary">MusicApp Teacher Portal</h1>
+          <h1 className="text-xl font-semibold text-textPrimary sm:text-2xl">MusicApp Teacher Portal</h1>
         </div>
 
         <div className="space-y-4">

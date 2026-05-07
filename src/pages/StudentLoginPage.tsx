@@ -62,8 +62,8 @@ export function StudentLoginPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
-      <aside className="bg-darkDeep p-10 text-white">
-        <h2 className="text-3xl font-semibold">Student Portal</h2>
+      <aside className="bg-darkDeep p-6 text-white sm:p-10">
+        <h2 className="text-2xl font-semibold sm:text-3xl">Student Portal</h2>
         <p className="mt-2 text-slate-300">Keep your streak alive and unlock new map levels.</p>
         <div className="mt-10 rounded-xl border border-darkMid p-5">
           <p className="text-sm text-slate-300">Live progression</p>
@@ -71,9 +71,9 @@ export function StudentLoginPage() {
         </div>
       </aside>
 
-      <main className="flex items-center justify-center bg-white p-6">
-        <div className="w-full max-w-md rounded-xl border border-border p-6">
-          <h1 className="text-2xl font-semibold text-textPrimary">Find your class</h1>
+      <main className="flex items-center justify-center bg-white p-4 sm:p-6">
+        <div className="w-full max-w-md rounded-xl border border-border p-5 sm:p-6">
+          <h1 className="text-xl font-semibold text-textPrimary sm:text-2xl">Find your class</h1>
           <p className="mb-5 text-sm text-textSecondary">Step {step} of 3</p>
 
           {step === 1 ? (
