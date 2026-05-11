@@ -4,6 +4,7 @@ import type {
   PrizeRedemption,
   ProgressSnapshotRow,
   StudentBadge,
+  StudentCharacterProfile,
   Student,
 } from '@/lib/types'
 
@@ -33,7 +34,11 @@ export async function awardSticker(
   })
 
   if (error) throw error
-  return (data?.[0] as AwardStickerResponse | undefined) ?? null
+  const snapshot = (data?.[0] as AwardStickerResponse | undefined) ?? null
+  if (!snapshot) {
+    throw new Error('Sticker assigned but no progression snapshot was returned.')
+  }
+  return snapshot
 }
 
 export async function fetchStudentProgressSnapshot(
@@ -131,4 +136,46 @@ export async function fetchStudentsByClassCode(classCode: string): Promise<Stude
   })
   if (error) throw error
   return (data ?? []) as Student[]
+}
+
+export async function fetchStudentCharacterProfile(
+  studentId: string,
+  shareToken?: string | null,
+): Promise<StudentCharacterProfile | null> {
+  const supabase = requireSupabaseClient()
+
+  const { data, error } = await supabase.rpc('get_student_character_profile', {
+    p_student_id: studentId,
+    p_share_token: shareToken ?? null,
+  })
+
+  // If SQL functions are not deployed yet, allow UI to continue with local fallback.
+  if (error && error.code === '42883') return null
+  if (error) throw error
+  return ((data ?? [])[0] as StudentCharacterProfile | undefined) ?? null
+}
+
+export async function saveStudentCharacterProfile(
+  studentId: string,
+  bodyVariant: number,
+  faceVariant: number,
+  colorVariant: number,
+  characterName: string,
+  shareToken?: string | null,
+): Promise<StudentCharacterProfile | null> {
+  const supabase = requireSupabaseClient()
+
+  const { data, error } = await supabase.rpc('upsert_student_character_profile', {
+    p_student_id: studentId,
+    p_share_token: shareToken ?? null,
+    p_body_variant: bodyVariant,
+    p_face_variant: faceVariant,
+    p_color_variant: colorVariant,
+    p_character_name: characterName,
+  })
+
+  // If SQL functions are not deployed yet, allow UI to continue with local fallback.
+  if (error && error.code === '42883') return null
+  if (error) throw error
+  return ((data ?? [])[0] as StudentCharacterProfile | undefined) ?? null
 }

@@ -91,3 +91,12 @@ export interface PrizeRedemption {
   prize_coin_cost?: number
   student_username?: string
 }
+
+export interface StudentCharacterProfile {
+  student_id: string
+  body_variant: number
+  face_variant: number
+  color_variant: number
+  character_name: string
+  updated_at: string
+}
