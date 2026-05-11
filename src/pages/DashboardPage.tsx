@@ -18,6 +18,19 @@ function dedupeById<T extends { id: string }>(rows: T[]) {
   return Array.from(new Map(rows.map((row) => [row.id, row])).values())
 }
 
+function readErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -33,6 +46,7 @@ export function DashboardPage() {
   })
   const [redemptionQueue, setRedemptionQueue] = useState<PrizeRedemption[]>([])
   const [queueLoading, setQueueLoading] = useState(false)
+  const [queueError, setQueueError] = useState('')
   const { teacherId } = useTeacherAuth()
 
   const isSelectMode = searchParams.get('mode') === 'select'
@@ -55,10 +69,12 @@ export function DashboardPage() {
 
   const loadRedemptionQueue = useCallback(async () => {
     setQueueLoading(true)
+    setQueueError('')
     try {
       const queue = await fetchTeacherRedemptionQueue()
       setRedemptionQueue(dedupeById(queue))
-    } catch {
+    } catch (error) {
+      setQueueError(readErrorMessage(error, 'Unable to load redemption requests.'))
       setRedemptionQueue([])
     } finally {
       setQueueLoading(false)
@@ -186,6 +202,7 @@ export function DashboardPage() {
       <section className="rounded-xl border border-border bg-white p-4">
         <h3 className="mb-3 text-lg font-semibold text-textPrimary">Prize Redemption Queue</h3>
         {queueLoading ? <p className="text-sm text-textSecondary">Loading requests...</p> : null}
+        {queueError ? <p className="mb-2 text-sm text-error">{queueError}</p> : null}
         {!queueLoading && !redemptionQueue.length ? (
           <p className="text-sm text-textSecondary">No pending redemptions.</p>
         ) : null}
@@ -208,9 +225,13 @@ export function DashboardPage() {
                   <Button
                     size="sm"
                     onClick={async () => {
-                      await approvePrizeRedemption(request.id)
-                      await loadRedemptionQueue()
-                      await loadDashboardData()
+                      try {
+                        await approvePrizeRedemption(request.id)
+                        await loadRedemptionQueue()
+                        await loadDashboardData()
+                      } catch (error) {
+                        setQueueError(readErrorMessage(error, 'Unable to approve this redemption request.'))
+                      }
                     }}
                   >
                     Approve
@@ -219,8 +240,12 @@ export function DashboardPage() {
                     size="sm"
                     variant="secondary"
                     onClick={async () => {
-                      await rejectPrizeRedemption(request.id, 'Try again after more practice steps.')
-                      await loadRedemptionQueue()
+                      try {
+                        await rejectPrizeRedemption(request.id, 'Try again after more practice steps.')
+                        await loadRedemptionQueue()
+                      } catch (error) {
+                        setQueueError(readErrorMessage(error, 'Unable to reject this redemption request.'))
+                      }
                     }}
                   >
                     Reject

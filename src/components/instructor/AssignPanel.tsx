@@ -9,6 +9,19 @@ import type { RewardType } from '@/lib/types'
 import { useSuccessToast } from '@/components/shared/SuccessToast'
 import { awardSticker } from '@/lib/progressionApi'
 
+function readErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
 interface AssignPanelProps {
   open: boolean
   onClose: () => void
@@ -48,8 +61,11 @@ export function AssignPanel({
       onAssigned?.()
       setNote('')
       setType('star')
-    } catch {
-      successToast('Unable to assign sticker', 'Please check your Supabase connection.')
+    } catch (error) {
+      successToast(
+        'Unable to assign sticker',
+        readErrorMessage(error, 'Please check your Supabase connection and teacher/student data.'),
+      )
     } finally {
       setIsLoading(false)
     }
