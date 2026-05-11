@@ -118,6 +118,18 @@ create table if not exists public.prize_redemptions (
   ledger_entry_id uuid references public.student_coin_ledger(id) on delete set null
 );
 
+create table if not exists public.student_character_profiles (
+  student_id uuid primary key references public.students(id) on delete cascade,
+  body_variant int not null default 1 check (body_variant between 1 and 4),
+  face_variant int not null default 1 check (face_variant between 1 and 4),
+  color_variant int not null default 1 check (color_variant between 1 and 4),
+  character_name text not null default 'My Character',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.student_character_profiles
+  add column if not exists character_name text not null default 'My Character';
+
 create index if not exists idx_students_teacher_id on public.students(teacher_id);
 create index if not exists idx_sessions_student_id on public.sessions(student_id);
 create index if not exists idx_rewards_student_id on public.rewards(student_id);
@@ -127,6 +139,7 @@ create index if not exists idx_badges_student on public.student_badges(student_i
 create index if not exists idx_reward_events_student on public.reward_events(student_id);
 create index if not exists idx_prizes_teacher on public.prize_catalog(teacher_id);
 create index if not exists idx_redemptions_teacher_status on public.prize_redemptions(teacher_id, status);
+create index if not exists idx_character_profiles_updated_at on public.student_character_profiles(updated_at desc);
 
 -- Seed worlds
 insert into public.worlds (id, label, step_count, theme, sort_order)
@@ -163,8 +176,8 @@ security definer
 set search_path = public
 as $$
   select coalesce(sum(amount), 0)::int
-  from public.student_coin_ledger
-  where student_id = p_student_id
+  from public.student_coin_ledger scl
+  where scl.student_id = p_student_id
 $$;
 
 create or replace function public.compute_progress_state(p_total_steps int)
@@ -368,7 +381,7 @@ begin
       v_new_total,
       format('World %s milestone (%s levels)', v_completed_world_id, v_step_in_world)
     )
-    on conflict (student_id, badge_key) do nothing;
+    on conflict on constraint student_badges_student_id_badge_key_key do nothing;
   end if;
 
   if v_is_world_complete then
@@ -388,7 +401,7 @@ begin
       v_new_total,
       format('World %s completion trophy', v_completed_world_id)
     )
-    on conflict (student_id, badge_key) do nothing;
+    on conflict on constraint student_badges_student_id_badge_key_key do nothing;
 
     insert into public.student_coin_ledger (
       student_id,
@@ -408,16 +421,17 @@ begin
 
   return query
   select
-    gps.student_id,
-    gps.total_steps,
-    gps.current_world_id,
-    gps.current_world_step,
-    gps.unlocked_world_id,
-    gps.coin_balance,
-    gps.milestone_badges,
-    gps.world_badges,
-    gps.total_badges
-  from public.get_student_progress_snapshot(p_student_id, null) gps;
+    sp.student_id,
+    sp.total_steps,
+    sp.current_world_id,
+    sp.current_world_step,
+    sp.unlocked_world_id,
+    public.get_coin_balance(sp.student_id) as coin_balance,
+    sp.milestone_badges,
+    sp.world_badges,
+    sp.total_badges
+  from public.student_progress sp
+  where sp.student_id = p_student_id;
 end;
 $$;
 
@@ -909,6 +923,99 @@ begin
 end;
 $$;
 
+drop function if exists public.get_student_character_profile(uuid, text);
+create or replace function public.get_student_character_profile(
+  p_student_id uuid,
+  p_share_token text default null
+)
+returns setof public.student_character_profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_teacher_id uuid := auth.uid();
+begin
+  if p_share_token is not null then
+    perform public.assert_student_share_token(p_student_id, p_share_token);
+  elsif v_teacher_id is null then
+    raise exception 'Student token or teacher authentication required';
+  else
+    perform public.assert_teacher_owns_student(p_student_id, v_teacher_id);
+  end if;
+
+  insert into public.student_character_profiles (student_id)
+  values (p_student_id)
+  on conflict (student_id) do nothing;
+
+  return query
+  select
+    scp.*
+  from public.student_character_profiles scp
+  where scp.student_id = p_student_id;
+end;
+$$;
+
+drop function if exists public.upsert_student_character_profile(uuid, text, int, int, int);
+drop function if exists public.upsert_student_character_profile(uuid, text, int, int, int, text);
+create or replace function public.upsert_student_character_profile(
+  p_student_id uuid,
+  p_share_token text,
+  p_body_variant int,
+  p_face_variant int,
+  p_color_variant int,
+  p_character_name text default 'My Character'
+)
+returns setof public.student_character_profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_body_variant < 1 or p_body_variant > 4 then
+    raise exception 'Body variant must be between 1 and 4';
+  end if;
+  if p_face_variant < 1 or p_face_variant > 4 then
+    raise exception 'Face variant must be between 1 and 4';
+  end if;
+  if p_color_variant < 1 or p_color_variant > 4 then
+    raise exception 'Color variant must be between 1 and 4';
+  end if;
+
+  perform public.assert_student_share_token(p_student_id, p_share_token);
+
+  insert into public.student_character_profiles (
+    student_id,
+    body_variant,
+    face_variant,
+    color_variant,
+    character_name,
+    updated_at
+  )
+  values (
+    p_student_id,
+    p_body_variant,
+    p_face_variant,
+    p_color_variant,
+    left(coalesce(nullif(trim(p_character_name), ''), 'My Character'), 24),
+    now()
+  )
+  on conflict (student_id) do update
+  set
+    body_variant = excluded.body_variant,
+    face_variant = excluded.face_variant,
+    color_variant = excluded.color_variant,
+    character_name = excluded.character_name,
+    updated_at = now();
+
+  return query
+  select
+    scp.*
+  from public.student_character_profiles scp
+  where scp.student_id = p_student_id;
+end;
+$$;
+
 -- Student login helper RPC used by StudentLoginPage.
 create or replace function public.students_by_class_code(class_code_input text)
 returns table (
@@ -950,6 +1057,7 @@ alter table public.student_badges enable row level security;
 alter table public.reward_events enable row level security;
 alter table public.prize_catalog enable row level security;
 alter table public.prize_redemptions enable row level security;
+alter table public.student_character_profiles enable row level security;
 
 drop policy if exists "teacher read self" on public.teachers;
 create policy "teacher read self"
@@ -1084,6 +1192,20 @@ to authenticated
 using (teacher_id = auth.uid())
 with check (teacher_id = auth.uid());
 
+drop policy if exists "teachers select student character profiles" on public.student_character_profiles;
+create policy "teachers select student character profiles"
+on public.student_character_profiles
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.students s
+    where s.id = student_character_profiles.student_id
+      and s.teacher_id = auth.uid()
+  )
+);
+
 -- Grants
 grant execute on function public.ensure_student_progress_row(uuid) to authenticated;
 grant execute on function public.get_coin_balance(uuid) to authenticated;
@@ -1101,6 +1223,8 @@ grant execute on function public.approve_prize_redemption(uuid, text) to authent
 grant execute on function public.reject_prize_redemption(uuid, text) to authenticated;
 grant execute on function public.get_redemption_history(uuid, text) to anon, authenticated;
 grant execute on function public.get_teacher_redemption_queue() to authenticated;
+grant execute on function public.get_student_character_profile(uuid, text) to anon, authenticated;
+grant execute on function public.upsert_student_character_profile(uuid, text, int, int, int, text) to anon, authenticated;
 grant execute on function public.students_by_class_code(text) to anon, authenticated;
 
 -- Seed sample prizes for every teacher
