@@ -33,12 +33,14 @@ export async function createTeacherProfile(
   teacherId: string,
   name: string,
   email?: string | null,
+  classCode?: string | null,
 ): Promise<AdminTeacherProfile | null> {
   const supabase = requireSupabaseClient()
   const { data, error } = await supabase.rpc('admin_create_teacher_profile', {
     p_teacher_id: teacherId,
     p_name: name.trim() || null,
     p_email: email?.trim() || null,
+    p_class_code: classCode?.trim().toUpperCase() || null,
   })
   if (error) throw error
   return ((data ?? [])[0] as AdminTeacherProfile | undefined) ?? null
@@ -48,12 +50,27 @@ export async function createTeacherAccount(
   email: string,
   password: string,
   name?: string,
+  classCode?: string,
 ): Promise<AdminTeacherProfile | null> {
   const supabase = requireSupabaseClient()
   const { data, error } = await supabase.rpc('admin_create_teacher_account', {
     p_email: email.trim().toLowerCase(),
     p_password: password,
     p_name: name?.trim() || null,
+    p_class_code: classCode?.trim().toUpperCase() || null,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as AdminTeacherProfile | undefined) ?? null
+}
+
+export async function updateTeacherClassCode(
+  teacherId: string,
+  classCode: string,
+): Promise<AdminTeacherProfile | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_update_teacher_class_code', {
+    p_teacher_id: teacherId,
+    p_class_code: classCode.trim().toUpperCase() || null,
   })
   if (error) throw error
   return ((data ?? [])[0] as AdminTeacherProfile | undefined) ?? null
@@ -84,4 +101,35 @@ export async function updateStudentPin(studentId: string, newPin: string): Promi
   })
   if (error) throw error
   return ((data ?? [])[0] as AdminStudentProfile | undefined) ?? null
+}
+
+export async function updateStudentClassCode(
+  studentId: string,
+  classCode: string,
+): Promise<AdminStudentProfile | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_update_student_class_code', {
+    p_student_id: studentId,
+    p_class_code: classCode.trim().toUpperCase() || null,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as AdminStudentProfile | undefined) ?? null
+}
+
+export async function deleteStudentProfile(studentId: string): Promise<{ id: string; username: string } | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_delete_student_profile', {
+    p_student_id: studentId,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as { id: string; username: string } | undefined) ?? null
+}
+
+export async function deleteTeacherAccount(teacherId: string): Promise<{ id: string; email: string } | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_delete_teacher_account', {
+    p_teacher_id: teacherId,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as { id: string; email: string } | undefined) ?? null
 }

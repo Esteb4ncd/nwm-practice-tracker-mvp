@@ -2,12 +2,20 @@
 -- Run this after setup.sql.
 
 create extension if not exists pgcrypto;
+alter table if exists public.teachers
+  add column if not exists class_code text;
 
 create table if not exists public.admin_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
   email text,
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.admin_student_pins (
+  student_id uuid primary key references public.students(id) on delete cascade,
+  pin_plain text not null,
+  updated_at timestamptz not null default now()
 );
 
 alter table public.admin_profiles enable row level security;
@@ -78,11 +86,13 @@ begin
 end;
 $$;
 
+drop function if exists public.admin_list_teachers();
 create or replace function public.admin_list_teachers()
 returns table (
   id uuid,
   name text,
-  email text
+  email text,
+  class_code text
 )
 language plpgsql
 security definer
@@ -95,7 +105,8 @@ begin
   select
     t.id,
     t.name,
-    t.email
+    t.email,
+    nullif(upper(trim(t.class_code)), '')
   from public.teachers t
   order by coalesce(t.name, t.email, t.id::text) asc;
 end;
@@ -111,7 +122,8 @@ returns table (
   created_at timestamptz,
   teacher_name text,
   pin_hash text,
-  pin_is_hashed boolean
+  pin_is_hashed boolean,
+  admin_pin_plain text
 )
 language plpgsql
 security definer
@@ -130,22 +142,27 @@ begin
     s.created_at,
     t.name as teacher_name,
     s.pin_hash,
-    case when s.pin_hash like '$2%' then true else false end as pin_is_hashed
+    case when s.pin_hash like '$2%' then true else false end as pin_is_hashed,
+    asp.pin_plain as admin_pin_plain
   from public.students s
   left join public.teachers t on t.id = s.teacher_id
+  left join public.admin_student_pins asp on asp.student_id = s.id
   order by s.created_at desc;
 end;
 $$;
 
+drop function if exists public.admin_create_teacher_profile(uuid, text, text);
 create or replace function public.admin_create_teacher_profile(
   p_teacher_id uuid,
   p_name text default null,
-  p_email text default null
+  p_email text default null,
+  p_class_code text default null
 )
 returns table (
   id uuid,
   name text,
-  email text
+  email text,
+  class_code text
 )
 language plpgsql
 security definer
@@ -162,32 +179,42 @@ begin
     raise exception 'Auth user not found for teacher profile';
   end if;
 
-  insert into public.teachers (id, name, email)
-  values (p_teacher_id, nullif(trim(p_name), ''), nullif(trim(p_email), ''))
+  insert into public.teachers (id, name, email, class_code)
+  values (
+    p_teacher_id,
+    nullif(trim(p_name), ''),
+    nullif(trim(p_email), ''),
+    nullif(upper(trim(p_class_code)), '')
+  )
   on conflict (id) do update
   set
     name = coalesce(excluded.name, teachers.name),
-    email = coalesce(excluded.email, teachers.email);
+    email = coalesce(excluded.email, teachers.email),
+    class_code = coalesce(excluded.class_code, teachers.class_code);
 
   return query
   select
     t.id,
     t.name,
-    t.email
+    t.email,
+    nullif(upper(trim(t.class_code)), '')
   from public.teachers t
   where t.id = p_teacher_id;
 end;
 $$;
 
+drop function if exists public.admin_create_teacher_account(text, text, text);
 create or replace function public.admin_create_teacher_account(
   p_email text,
   p_password text,
-  p_name text default null
+  p_name text default null,
+  p_class_code text default null
 )
 returns table (
   id uuid,
   name text,
-  email text
+  email text,
+  class_code text
 )
 language plpgsql
 security definer
@@ -269,14 +296,20 @@ begin
     now()
   );
 
-  insert into public.teachers (id, name, email)
-  values (v_user_id, nullif(trim(p_name), ''), v_email);
+  insert into public.teachers (id, name, email, class_code)
+  values (
+    v_user_id,
+    nullif(trim(p_name), ''),
+    v_email,
+    nullif(upper(trim(p_class_code)), '')
+  );
 
   return query
   select
     t.id,
     t.name,
-    t.email
+    t.email,
+    nullif(upper(trim(t.class_code)), '')
   from public.teachers t
   where t.id = v_user_id;
 end;
@@ -297,7 +330,8 @@ returns table (
   created_at timestamptz,
   teacher_name text,
   pin_hash text,
-  pin_is_hashed boolean
+  pin_is_hashed boolean,
+  admin_pin_plain text
 )
 language plpgsql
 security definer
@@ -305,6 +339,7 @@ set search_path = public
 as $$
 declare
   v_teacher_name text;
+  v_student_id uuid;
 begin
   perform public.admin_assert_access();
 
@@ -316,16 +351,19 @@ begin
     raise exception 'Student PIN must be at least 4 characters';
   end if;
 
+  if not exists (
+    select 1
+    from public.teachers t
+    where t.id = p_teacher_id
+  ) then
+    raise exception 'Teacher profile not found';
+  end if;
+
   select t.name
   into v_teacher_name
   from public.teachers t
   where t.id = p_teacher_id;
 
-  if v_teacher_name is null then
-    raise exception 'Teacher profile not found';
-  end if;
-
-  return query
   insert into public.students (teacher_id, username, pin_hash, class_code)
   values (
     p_teacher_id,
@@ -333,22 +371,74 @@ begin
     extensions.crypt(trim(p_pin), extensions.gen_salt('bf')),
     nullif(upper(trim(p_class_code)), '')
   )
-  returning
-    students.id,
-    students.teacher_id,
-    students.username,
-    students.class_code,
-    students.share_token,
-    students.created_at,
+  returning students.id into v_student_id;
+
+  insert into public.admin_student_pins (student_id, pin_plain)
+  values (v_student_id, trim(p_pin))
+  on conflict (student_id) do update
+  set
+    pin_plain = excluded.pin_plain,
+    updated_at = now();
+
+  return query
+  select
+    s.id,
+    s.teacher_id,
+    s.username,
+    s.class_code,
+    s.share_token,
+    s.created_at,
     v_teacher_name,
-    students.pin_hash,
-    case when students.pin_hash like '$2%' then true else false end;
+    s.pin_hash,
+    case when s.pin_hash like '$2%' then true else false end,
+    asp.pin_plain
+  from public.students s
+  left join public.admin_student_pins asp on asp.student_id = s.id
+  where s.id = v_student_id;
 end;
 $$;
 
-create or replace function public.admin_update_student_pin(
+drop function if exists public.admin_update_teacher_class_code(uuid, text);
+create or replace function public.admin_update_teacher_class_code(
+  p_teacher_id uuid,
+  p_class_code text default null
+)
+returns table (
+  id uuid,
+  name text,
+  email text,
+  class_code text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.admin_assert_access();
+
+  update public.teachers t
+  set class_code = nullif(upper(trim(p_class_code)), '')
+  where t.id = p_teacher_id;
+
+  if not found then
+    raise exception 'Teacher profile not found';
+  end if;
+
+  return query
+  select
+    t.id,
+    t.name,
+    t.email,
+    nullif(upper(trim(t.class_code)), '')
+  from public.teachers t
+  where t.id = p_teacher_id;
+end;
+$$;
+
+drop function if exists public.admin_update_student_class_code(uuid, text);
+create or replace function public.admin_update_student_class_code(
   p_student_id uuid,
-  p_new_pin text
+  p_class_code text default null
 )
 returns table (
   id uuid,
@@ -359,7 +449,8 @@ returns table (
   created_at timestamptz,
   teacher_name text,
   pin_hash text,
-  pin_is_hashed boolean
+  pin_is_hashed boolean,
+  admin_pin_plain text
 )
 language plpgsql
 security definer
@@ -370,12 +461,8 @@ declare
 begin
   perform public.admin_assert_access();
 
-  if length(trim(p_new_pin)) < 4 then
-    raise exception 'Student PIN must be at least 4 characters';
-  end if;
-
   update public.students s
-  set pin_hash = extensions.crypt(trim(p_new_pin), extensions.gen_salt('bf'))
+  set class_code = nullif(upper(trim(p_class_code)), '')
   where s.id = p_student_id;
 
   if not found then
@@ -398,9 +485,143 @@ begin
     s.created_at,
     v_teacher_name,
     s.pin_hash,
-    case when s.pin_hash like '$2%' then true else false end
+    case when s.pin_hash like '$2%' then true else false end,
+    asp.pin_plain
+  from public.students s
+  left join public.admin_student_pins asp on asp.student_id = s.id
+  where s.id = p_student_id;
+end;
+$$;
+
+create or replace function public.admin_update_student_pin(
+  p_student_id uuid,
+  p_new_pin text
+)
+returns table (
+  id uuid,
+  teacher_id uuid,
+  username text,
+  class_code text,
+  share_token text,
+  created_at timestamptz,
+  teacher_name text,
+  pin_hash text,
+  pin_is_hashed boolean,
+  admin_pin_plain text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_teacher_name text;
+begin
+  perform public.admin_assert_access();
+
+  if length(trim(p_new_pin)) < 4 then
+    raise exception 'Student PIN must be at least 4 characters';
+  end if;
+
+  update public.students s
+  set pin_hash = extensions.crypt(trim(p_new_pin), extensions.gen_salt('bf'))
+  where s.id = p_student_id;
+
+  if not found then
+    raise exception 'Student not found';
+  end if;
+
+  insert into public.admin_student_pins (student_id, pin_plain)
+  values (p_student_id, trim(p_new_pin))
+  on conflict (student_id) do update
+  set
+    pin_plain = excluded.pin_plain,
+    updated_at = now();
+
+  select t.name
+  into v_teacher_name
+  from public.students s
+  left join public.teachers t on t.id = s.teacher_id
+  where s.id = p_student_id;
+
+  return query
+  select
+    s.id,
+    s.teacher_id,
+    s.username,
+    s.class_code,
+    s.share_token,
+    s.created_at,
+    v_teacher_name,
+    s.pin_hash,
+    case when s.pin_hash like '$2%' then true else false end,
+    asp.pin_plain
+  from public.students s
+  left join public.admin_student_pins asp on asp.student_id = s.id
+  where s.id = p_student_id;
+end;
+$$;
+
+create or replace function public.admin_delete_student_profile(p_student_id uuid)
+returns table (
+  id uuid,
+  username text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_username text;
+begin
+  perform public.admin_assert_access();
+
+  select s.username
+  into v_username
   from public.students s
   where s.id = p_student_id;
+
+  if v_username is null then
+    raise exception 'Student not found';
+  end if;
+
+  delete from public.students s
+  where s.id = p_student_id;
+
+  return query select p_student_id, v_username;
+end;
+$$;
+
+create or replace function public.admin_delete_teacher_account(p_teacher_id uuid)
+returns table (
+  id uuid,
+  email text
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_email text;
+begin
+  perform public.admin_assert_access();
+
+  if p_teacher_id = auth.uid() then
+    raise exception 'You cannot delete your own admin account';
+  end if;
+
+  select u.email::text
+  into v_email
+  from auth.users u
+  where u.id = p_teacher_id;
+
+  if v_email is null then
+    raise exception 'Teacher auth account not found';
+  end if;
+
+  delete from auth.users u
+  where u.id = p_teacher_id;
+
+  return query select p_teacher_id, v_email;
 end;
 $$;
 
@@ -409,7 +630,11 @@ grant execute on function public.admin_is_current_user() to authenticated;
 grant execute on function public.admin_list_auth_users() to authenticated;
 grant execute on function public.admin_list_teachers() to authenticated;
 grant execute on function public.admin_list_students() to authenticated;
-grant execute on function public.admin_create_teacher_profile(uuid, text, text) to authenticated;
-grant execute on function public.admin_create_teacher_account(text, text, text) to authenticated;
+grant execute on function public.admin_create_teacher_profile(uuid, text, text, text) to authenticated;
+grant execute on function public.admin_create_teacher_account(text, text, text, text) to authenticated;
+grant execute on function public.admin_update_teacher_class_code(uuid, text) to authenticated;
 grant execute on function public.admin_create_student_profile(uuid, text, text, text) to authenticated;
+grant execute on function public.admin_update_student_class_code(uuid, text) to authenticated;
 grant execute on function public.admin_update_student_pin(uuid, text) to authenticated;
+grant execute on function public.admin_delete_student_profile(uuid) to authenticated;
+grant execute on function public.admin_delete_teacher_account(uuid) to authenticated;

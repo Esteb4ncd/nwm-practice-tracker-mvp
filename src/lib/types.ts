@@ -111,6 +111,7 @@ export interface AdminTeacherProfile {
   id: string
   name: string | null
   email: string | null
+  class_code: string | null
 }
 
 export interface AdminStudentProfile {
@@ -123,4 +124,5 @@ export interface AdminStudentProfile {
   teacher_name: string | null
   pin_hash: string | null
   pin_is_hashed: boolean
+  admin_pin_plain: string | null
 }
