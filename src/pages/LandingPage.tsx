@@ -23,6 +23,9 @@ export function LandingPage() {
           <Link to="/login/student" className="rounded-md px-2 py-1.5 hover:bg-white sm:px-3">
             For Students
           </Link>
+          <Link to="/login/admin" className="rounded-md px-2 py-1.5 hover:bg-white sm:px-3">
+            Master Admin
+          </Link>
           <Button asChild className="ml-auto sm:ml-0">
             <Link to="/login/instructor">Open Portal</Link>
           </Button>
@@ -45,6 +48,9 @@ export function LandingPage() {
             </Button>
             <Button asChild variant="secondary">
               <Link to="/login/student">Student Login</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/login/admin">Master Admin</Link>
             </Button>
           </div>
 
