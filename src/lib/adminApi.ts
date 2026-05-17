@@ -44,6 +44,21 @@ export async function createTeacherProfile(
   return ((data ?? [])[0] as AdminTeacherProfile | undefined) ?? null
 }
 
+export async function createTeacherAccount(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<AdminTeacherProfile | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_create_teacher_account', {
+    p_email: email.trim().toLowerCase(),
+    p_password: password,
+    p_name: name?.trim() || null,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as AdminTeacherProfile | undefined) ?? null
+}
+
 export async function createStudentProfile(
   teacherId: string,
   username: string,
@@ -56,6 +71,16 @@ export async function createStudentProfile(
     p_username: username.trim(),
     p_pin: pin.trim(),
     p_class_code: classCode?.trim().toUpperCase() || null,
+  })
+  if (error) throw error
+  return ((data ?? [])[0] as AdminStudentProfile | undefined) ?? null
+}
+
+export async function updateStudentPin(studentId: string, newPin: string): Promise<AdminStudentProfile | null> {
+  const supabase = requireSupabaseClient()
+  const { data, error } = await supabase.rpc('admin_update_student_pin', {
+    p_student_id: studentId,
+    p_new_pin: newPin.trim(),
   })
   if (error) throw error
   return ((data ?? [])[0] as AdminStudentProfile | undefined) ?? null

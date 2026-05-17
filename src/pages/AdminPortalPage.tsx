@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,14 +12,14 @@ import {
 } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
+  createTeacherAccount,
   createStudentProfile,
-  createTeacherProfile,
-  fetchAdminAuthUsers,
   fetchAdminStudents,
   fetchAdminTeachers,
+  updateStudentPin,
 } from '@/lib/adminApi'
 import { signOutTeacher } from '@/lib/auth'
-import type { AdminAuthUser, AdminStudentProfile, AdminTeacherProfile } from '@/lib/types'
+import type { AdminStudentProfile, AdminTeacherProfile } from '@/lib/types'
 
 function readErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -42,34 +42,25 @@ export function AdminPortalPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const [authUsers, setAuthUsers] = useState<AdminAuthUser[]>([])
   const [teachers, setTeachers] = useState<AdminTeacherProfile[]>([])
   const [students, setStudents] = useState<AdminStudentProfile[]>([])
 
-  const [selectedAuthUserId, setSelectedAuthUserId] = useState('')
+  const [teacherAccountEmail, setTeacherAccountEmail] = useState('')
+  const [teacherAccountPassword, setTeacherAccountPassword] = useState('')
   const [teacherName, setTeacherName] = useState('')
-  const [teacherEmail, setTeacherEmail] = useState('')
 
   const [studentTeacherId, setStudentTeacherId] = useState('')
   const [studentUsername, setStudentUsername] = useState('')
   const [studentClassCode, setStudentClassCode] = useState('')
   const [studentPin, setStudentPin] = useState('')
-
-  const selectedAuthUser = useMemo(
-    () => authUsers.find((user) => user.id === selectedAuthUserId) ?? null,
-    [authUsers, selectedAuthUserId],
-  )
+  const [pinDrafts, setPinDrafts] = useState<Record<string, string>>({})
+  const [savingPinStudentId, setSavingPinStudentId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
     setError('')
     try {
-      const [users, teacherRows, studentRows] = await Promise.all([
-        fetchAdminAuthUsers(),
-        fetchAdminTeachers(),
-        fetchAdminStudents(),
-      ])
-      setAuthUsers(users)
+      const [teacherRows, studentRows] = await Promise.all([fetchAdminTeachers(), fetchAdminStudents()])
       setTeachers(teacherRows)
       setStudents(studentRows)
       if (!studentTeacherId && teacherRows.length) {
@@ -87,25 +78,19 @@ export function AdminPortalPage() {
   }, [loadData])
 
   const onCreateTeacher = async () => {
-    if (!selectedAuthUserId) return
+    if (!teacherAccountEmail.trim() || !teacherAccountPassword.trim()) return
     setIsSavingTeacher(true)
     setError('')
     setSuccess('')
     try {
-      const fallbackName = selectedAuthUser?.email?.split('@')[0] ?? 'Teacher'
-      const fallbackEmail = selectedAuthUser?.email ?? ''
-      await createTeacherProfile(
-        selectedAuthUserId,
-        teacherName.trim() || fallbackName,
-        teacherEmail.trim() || fallbackEmail,
-      )
-      setSuccess('Teacher profile created/updated.')
+      await createTeacherAccount(teacherAccountEmail, teacherAccountPassword, teacherName)
+      setSuccess('Teacher account created.')
+      setTeacherAccountEmail('')
+      setTeacherAccountPassword('')
       setTeacherName('')
-      setTeacherEmail('')
-      setSelectedAuthUserId('')
       await loadData()
     } catch (err) {
-      setError(readErrorMessage(err, 'Unable to create teacher profile.'))
+      setError(readErrorMessage(err, 'Unable to create teacher account.'))
     } finally {
       setIsSavingTeacher(false)
     }
@@ -134,6 +119,24 @@ export function AdminPortalPage() {
     navigate('/login/admin')
   }
 
+  const onChangeStudentPin = async (studentId: string) => {
+    const nextPin = (pinDrafts[studentId] ?? '').trim()
+    if (!nextPin) return
+    setSavingPinStudentId(studentId)
+    setError('')
+    setSuccess('')
+    try {
+      await updateStudentPin(studentId, nextPin)
+      setSuccess('Student PIN updated.')
+      setPinDrafts((previous) => ({ ...previous, [studentId]: '' }))
+      await loadData()
+    } catch (err) {
+      setError(readErrorMessage(err, 'Unable to update student PIN.'))
+    } finally {
+      setSavingPinStudentId(null)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-neutral p-4 sm:p-6">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -154,35 +157,31 @@ export function AdminPortalPage() {
 
         <section className="grid gap-4 lg:grid-cols-2">
           <article className="space-y-3 rounded-xl border border-border bg-white p-4 sm:p-6">
-            <h2 className="text-lg font-semibold text-textPrimary">Add Teacher Profile</h2>
-            <p className="text-xs text-textSecondary">
-              Teacher account must already exist in Supabase Auth users.
-            </p>
-            <Select value={selectedAuthUserId} onValueChange={setSelectedAuthUserId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select auth user" />
-              </SelectTrigger>
-              <SelectContent>
-                {authUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {(user.email ?? 'No email')} ({user.id.slice(0, 8)}...)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <h2 className="text-lg font-semibold text-textPrimary">Create Teacher Account</h2>
+            <p className="text-xs text-textSecondary">Creates both Auth account and teacher profile.</p>
+            <Input
+              type="email"
+              value={teacherAccountEmail}
+              onChange={(event) => setTeacherAccountEmail(event.target.value)}
+              placeholder="Teacher email"
+            />
+            <Input
+              type="password"
+              value={teacherAccountPassword}
+              onChange={(event) => setTeacherAccountPassword(event.target.value)}
+              placeholder="Temporary password (min 8 chars)"
+              minLength={8}
+            />
             <Input
               value={teacherName}
               onChange={(event) => setTeacherName(event.target.value)}
-              placeholder="Teacher display name (optional)"
+              placeholder="Teacher display name"
             />
-            <Input
-              type="email"
-              value={teacherEmail}
-              onChange={(event) => setTeacherEmail(event.target.value)}
-              placeholder="Teacher email (optional)"
-            />
-            <Button onClick={onCreateTeacher} disabled={isSavingTeacher || !selectedAuthUserId}>
-              {isSavingTeacher ? 'Saving teacher...' : 'Create Teacher'}
+            <Button
+              onClick={onCreateTeacher}
+              disabled={isSavingTeacher || !teacherAccountEmail || !teacherAccountPassword}
+            >
+              {isSavingTeacher ? 'Creating teacher...' : 'Create Teacher'}
             </Button>
           </article>
 
@@ -258,6 +257,8 @@ export function AdminPortalPage() {
                 <TableRow>
                   <TableHead>Username</TableHead>
                   <TableHead>Class</TableHead>
+                  <TableHead>PIN</TableHead>
+                  <TableHead>Change PIN</TableHead>
                   <TableHead>Teacher</TableHead>
                 </TableRow>
               </TableHeader>
@@ -266,6 +267,39 @@ export function AdminPortalPage() {
                   <TableRow key={student.id}>
                     <TableCell>{student.username}</TableCell>
                     <TableCell>{student.class_code ?? '—'}</TableCell>
+                    <TableCell>
+                      {student.pin_hash
+                        ? student.pin_is_hashed
+                          ? 'Protected (hashed)'
+                          : student.pin_hash
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          placeholder="New PIN"
+                          maxLength={8}
+                          value={pinDrafts[student.id] ?? ''}
+                          onChange={(event) =>
+                            setPinDrafts((previous) => ({
+                              ...previous,
+                              [student.id]: event.target.value,
+                            }))
+                          }
+                          className="h-8 min-w-[110px]"
+                        />
+                        <Button
+                          size="sm"
+                          disabled={
+                            savingPinStudentId === student.id || !(pinDrafts[student.id] ?? '').trim()
+                          }
+                          onClick={() => onChangeStudentPin(student.id)}
+                        >
+                          {savingPinStudentId === student.id ? 'Saving...' : 'Update'}
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell>{student.teacher_name ?? '—'}</TableCell>
                   </TableRow>
                 ))}

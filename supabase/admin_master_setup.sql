@@ -109,7 +109,9 @@ returns table (
   class_code text,
   share_token text,
   created_at timestamptz,
-  teacher_name text
+  teacher_name text,
+  pin_hash text,
+  pin_is_hashed boolean
 )
 language plpgsql
 security definer
@@ -126,7 +128,9 @@ begin
     s.class_code,
     s.share_token,
     s.created_at,
-    t.name as teacher_name
+    t.name as teacher_name,
+    s.pin_hash,
+    case when s.pin_hash like '$2%' then true else false end as pin_is_hashed
   from public.students s
   left join public.teachers t on t.id = s.teacher_id
   order by s.created_at desc;
@@ -175,6 +179,109 @@ begin
 end;
 $$;
 
+create or replace function public.admin_create_teacher_account(
+  p_email text,
+  p_password text,
+  p_name text default null
+)
+returns table (
+  id uuid,
+  name text,
+  email text
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_email text := lower(trim(p_email));
+  v_user_id uuid := gen_random_uuid();
+begin
+  perform public.admin_assert_access();
+
+  if nullif(v_email, '') is null then
+    raise exception 'Teacher email is required';
+  end if;
+
+  if length(trim(p_password)) < 8 then
+    raise exception 'Teacher password must be at least 8 characters';
+  end if;
+
+  if exists (
+    select 1
+    from auth.users u
+    where lower(u.email::text) = v_email
+  ) then
+    raise exception 'An auth account already exists for this email';
+  end if;
+
+  insert into auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at,
+    confirmation_token,
+    email_change,
+    email_change_token_new,
+    recovery_token
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    v_user_id,
+    'authenticated',
+    'authenticated',
+    v_email,
+    extensions.crypt(trim(p_password), extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    '',
+    '',
+    '',
+    ''
+  );
+
+  insert into auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    provider_id,
+    created_at,
+    updated_at
+  )
+  values (
+    gen_random_uuid(),
+    v_user_id,
+    jsonb_build_object('sub', v_user_id::text, 'email', v_email),
+    'email',
+    v_email,
+    now(),
+    now()
+  );
+
+  insert into public.teachers (id, name, email)
+  values (v_user_id, nullif(trim(p_name), ''), v_email);
+
+  return query
+  select
+    t.id,
+    t.name,
+    t.email
+  from public.teachers t
+  where t.id = v_user_id;
+end;
+$$;
+
 create or replace function public.admin_create_student_profile(
   p_teacher_id uuid,
   p_username text,
@@ -188,7 +295,9 @@ returns table (
   class_code text,
   share_token text,
   created_at timestamptz,
-  teacher_name text
+  teacher_name text,
+  pin_hash text,
+  pin_is_hashed boolean
 )
 language plpgsql
 security definer
@@ -231,7 +340,67 @@ begin
     students.class_code,
     students.share_token,
     students.created_at,
-    v_teacher_name;
+    v_teacher_name,
+    students.pin_hash,
+    case when students.pin_hash like '$2%' then true else false end;
+end;
+$$;
+
+create or replace function public.admin_update_student_pin(
+  p_student_id uuid,
+  p_new_pin text
+)
+returns table (
+  id uuid,
+  teacher_id uuid,
+  username text,
+  class_code text,
+  share_token text,
+  created_at timestamptz,
+  teacher_name text,
+  pin_hash text,
+  pin_is_hashed boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_teacher_name text;
+begin
+  perform public.admin_assert_access();
+
+  if length(trim(p_new_pin)) < 4 then
+    raise exception 'Student PIN must be at least 4 characters';
+  end if;
+
+  update public.students s
+  set pin_hash = extensions.crypt(trim(p_new_pin), extensions.gen_salt('bf'))
+  where s.id = p_student_id;
+
+  if not found then
+    raise exception 'Student not found';
+  end if;
+
+  select t.name
+  into v_teacher_name
+  from public.students s
+  left join public.teachers t on t.id = s.teacher_id
+  where s.id = p_student_id;
+
+  return query
+  select
+    s.id,
+    s.teacher_id,
+    s.username,
+    s.class_code,
+    s.share_token,
+    s.created_at,
+    v_teacher_name,
+    s.pin_hash,
+    case when s.pin_hash like '$2%' then true else false end
+  from public.students s
+  where s.id = p_student_id;
 end;
 $$;
 
@@ -241,4 +410,6 @@ grant execute on function public.admin_list_auth_users() to authenticated;
 grant execute on function public.admin_list_teachers() to authenticated;
 grant execute on function public.admin_list_students() to authenticated;
 grant execute on function public.admin_create_teacher_profile(uuid, text, text) to authenticated;
+grant execute on function public.admin_create_teacher_account(text, text, text) to authenticated;
 grant execute on function public.admin_create_student_profile(uuid, text, text, text) to authenticated;
+grant execute on function public.admin_update_student_pin(uuid, text) to authenticated;

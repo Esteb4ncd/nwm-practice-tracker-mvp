@@ -121,4 +121,6 @@ export interface AdminStudentProfile {
   share_token: string
   created_at: string
   teacher_name: string | null
+  pin_hash: string | null
+  pin_is_hashed: boolean
 }
