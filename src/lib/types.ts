@@ -100,3 +100,25 @@ export interface StudentCharacterProfile {
   character_name: string
   updated_at: string
 }
+
+export interface AdminAuthUser {
+  id: string
+  email: string | null
+  created_at: string
+}
+
+export interface AdminTeacherProfile {
+  id: string
+  name: string | null
+  email: string | null
+}
+
+export interface AdminStudentProfile {
+  id: string
+  teacher_id: string
+  username: string
+  class_code: string | null
+  share_token: string
+  created_at: string
+  teacher_name: string | null
+}

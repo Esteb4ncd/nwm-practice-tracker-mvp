@@ -2,9 +2,12 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { ToastProvider } from '@/components/ui/toast'
 import { getRole, getStudentSession } from '@/lib/auth'
 import { useTeacherAuth } from '@/lib/useTeacherAuth'
+import { useAdminAuth } from '@/lib/useAdminAuth'
 import { InstructorLayout } from '@/components/layout/InstructorLayout'
 import { StudentLayout } from '@/components/layout/StudentLayout'
 import { LandingPage } from '@/pages/LandingPage'
+import { AdminLoginPage } from '@/pages/AdminLoginPage'
+import { AdminPortalPage } from '@/pages/AdminPortalPage'
 import { InstructorLoginPage } from '@/pages/InstructorLoginPage'
 import { StudentLoginPage } from '@/pages/StudentLoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -37,14 +40,38 @@ function RequireStudent({ children }: { children: React.ReactNode }) {
   )
 }
 
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { isLoading, isAuthenticated, isAdmin } = useAdminAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral">
+        <p className="text-sm text-textSecondary">Checking admin session...</p>
+      </div>
+    )
+  }
+
+  return isAuthenticated && isAdmin ? children : <Navigate to="/login/admin" replace />
+}
+
 export default function App() {
   return (
     <ToastProvider>
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/login/admin" element={<AdminLoginPage />} />
           <Route path="/login/instructor" element={<InstructorLoginPage />} />
           <Route path="/login/student" element={<StudentLoginPage />} />
+
+          <Route
+            path="/admin"
+            element={
+              <RequireAdmin>
+                <AdminPortalPage />
+              </RequireAdmin>
+            }
+          />
 
           <Route
             element={
