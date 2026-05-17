@@ -20,6 +20,21 @@ type DashboardPayload = {
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
+async function getTeacherClassCode(teacherId: string): Promise<string | null> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
+
+  const { data, error } = await supabase
+    .from('teachers')
+    .select('class_code')
+    .eq('id', teacherId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data?.class_code ?? null)?.trim().toUpperCase() || null
+}
+
 function getConsecutiveStreak(sessionDates: string[]) {
   if (!sessionDates.length) return 0
   const unique = new Set(sessionDates)
@@ -49,10 +64,16 @@ export async function fetchTeacherDashboardData(teacherId: string): Promise<Dash
     throw new Error('Supabase is not configured.')
   }
 
-  const { data: students, error: studentsError } = await supabase
+  const teacherClassCode = await getTeacherClassCode(teacherId)
+  let studentsQuery = supabase
     .from('students')
     .select('id, teacher_id, username, pin_hash, class_code, share_token, level, created_at')
-    .eq('teacher_id', teacherId)
+
+  studentsQuery = teacherClassCode
+    ? studentsQuery.eq('class_code', teacherClassCode)
+    : studentsQuery.eq('teacher_id', teacherId)
+
+  const { data: students, error: studentsError } = await studentsQuery
 
   if (studentsError) throw studentsError
 
@@ -161,12 +182,17 @@ export async function fetchTeacherStudentProfile(teacherId: string, studentId: s
     throw new Error('Supabase is not configured.')
   }
 
-  const { data: student, error: studentError } = await supabase
+  const teacherClassCode = await getTeacherClassCode(teacherId)
+  let studentQuery = supabase
     .from('students')
     .select('id, teacher_id, username, pin_hash, class_code, share_token, level, created_at')
-    .eq('teacher_id', teacherId)
     .eq('id', studentId)
-    .maybeSingle()
+
+  studentQuery = teacherClassCode
+    ? studentQuery.eq('class_code', teacherClassCode)
+    : studentQuery.eq('teacher_id', teacherId)
+
+  const { data: student, error: studentError } = await studentQuery.maybeSingle()
 
   if (studentError) throw studentError
   if (!student) throw new Error('Student not found.')
